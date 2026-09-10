@@ -1,0 +1,110 @@
+version: "3.9"
+
+services:
+  # Traceline's own metadata store. Never shares infrastructure with any
+  # customer's data warehouse.
+  pg_metadata:
+    image: postgres:16
+    environment:
+      # This is the schema-owning admin role, used only for migrations/seed.
+      # Migration 0001 creates a separate, non-superuser `traceline_app`
+      # role that the backend/worker actually connect as at runtime, so
+      # Postgres Row-Level Security policies are enforced against them.
+      POSTGRES_USER: traceline_admin
+      POSTGRES_PASSWORD: traceline_admin
+      POSTGRES_DB: traceline
+    ports:
+      - "55432:5432"
+    volumes:
+      - pg_metadata_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U traceline"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Stand-in for a *customer's* Postgres instance, used for local dev and the
+  # demo/test flow. Configured with stock csvlog auditing only (log_statement
+  # = all) -- no proxy, no extension -- so ingestion stays genuinely
+  # read-only and passive against it.
+  pg_customer_demo:
+    build:
+      context: ./customer-pg-demo
+    environment:
+      POSTGRES_USER: demo_app
+      POSTGRES_PASSWORD: demo_app_password
+      POSTGRES_DB: demo_customer
+    ports:
+      - "55433:5432"
+    volumes:
+      - pg_customer_demo_data:/var/lib/postgresql/data
+      # Deliberately NOT nested under the data volume above -- mounting a
+      # second volume as a subdirectory of PGDATA makes initdb see a
+      # non-empty directory and refuse to start.
+      - pg_customer_demo_logs:/var/log/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U demo_app"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://traceline_admin:traceline_admin@pg_metadata:5432/traceline
+      APP_DATABASE_URL: postgresql+psycopg://traceline_app:traceline_app@pg_metadata:5432/traceline
+    ports:
+      - "8000:8000"
+    depends_on:
+      pg_metadata:
+        condition: service_healthy
+    command: >
+      sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+    volumes:
+      - ./backend:/app
+
+  worker:
+    build:
+      context: ./backend
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://traceline_admin:traceline_admin@pg_metadata:5432/traceline
+      APP_DATABASE_URL: postgresql+psycopg://traceline_app:traceline_app@pg_metadata:5432/traceline
+    depends_on:
+      pg_metadata:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    command: python -m app.worker.scheduler
+    volumes:
+      - ./backend:/app
+      - pg_customer_demo_logs:/var/log/traceline_demo_source:ro
+
+  frontend:
+    build:
+      context: ./frontend
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:8000
+      # Docker Desktop on Windows doesn't propagate inotify events for
+      # bind-mounted source through to the Linux container's watcher --
+      # without polling, the dev server silently keeps serving stale
+      # compiled output after a file edit.
+      WATCHPACK_POLLING: "true"
+      CHOKIDAR_USEPOLLING: "true"
+    ports:
+      # Host 3001, not 3000 -- 3000 is already bound by another local
+      # project (reactive_resume).
+      - "3001:3000"
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+
+volumes:
+  pg_metadata_data:
+  pg_customer_demo_data:
+  pg_customer_demo_logs:
