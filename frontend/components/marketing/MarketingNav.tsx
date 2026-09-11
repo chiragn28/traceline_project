@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import ThemeToggle from "./ThemeToggle";
 
@@ -5,9 +6,24 @@ export default function MarketingNav() {
   return (
     <header className="sticky top-0 z-20 h-16 border-b border-slate-200 bg-paper/85 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/85">
       <div className="mx-auto flex h-full max-w-6xl items-center justify-between px-6">
-        <span className="font-mono text-[15px] font-semibold tracking-tight text-ink dark:text-zinc-50">
-          traceline
-        </span>
+        <Link href="/" className="flex items-center">
+          <Image
+            src="/brand/logo-lockup-light.png"
+            alt="Traceline"
+            width={520}
+            height={130}
+            className="h-7 w-auto dark:hidden"
+            priority
+          />
+          <Image
+            src="/brand/logo-lockup.png"
+            alt="Traceline"
+            width={520}
+            height={130}
+            className="hidden h-7 w-auto dark:block"
+            priority
+          />
+        </Link>
         <div className="flex items-center gap-3">
           <ThemeToggle />
           <Link

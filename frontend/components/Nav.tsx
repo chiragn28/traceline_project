@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { api } from "@/lib/api-client";
@@ -30,7 +31,24 @@ export default function Nav() {
     <header className="border-b border-slate-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
         <div className="flex items-center gap-8">
-          <span className="text-lg font-semibold tracking-tight dark:text-zinc-100">traceline</span>
+          <Link href="/data-sources" className="flex items-center">
+            <Image
+              src="/brand/logo-lockup-light.png"
+              alt="Traceline"
+              width={520}
+              height={130}
+              className="h-6 w-auto dark:hidden"
+              priority
+            />
+            <Image
+              src="/brand/logo-lockup.png"
+              alt="Traceline"
+              width={520}
+              height={130}
+              className="hidden h-6 w-auto dark:block"
+              priority
+            />
+          </Link>
           <nav className="flex gap-1">
             {LINKS.map((link) => (
               <Link

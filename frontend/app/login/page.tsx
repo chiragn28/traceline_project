@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api-client";
@@ -33,8 +34,23 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-paper px-4 dark:bg-zinc-950">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <h1 className="text-2xl font-semibold tracking-tight text-ink dark:text-zinc-50">traceline</h1>
-          <p className="mt-1 text-sm text-slate-500 dark:text-zinc-500">
+          <Image
+            src="/brand/logo-lockup-light.png"
+            alt="Traceline"
+            width={520}
+            height={130}
+            className="mx-auto h-9 w-auto dark:hidden"
+            priority
+          />
+          <Image
+            src="/brand/logo-lockup.png"
+            alt="Traceline"
+            width={520}
+            height={130}
+            className="mx-auto hidden h-9 w-auto dark:block"
+            priority
+          />
+          <p className="mt-2 text-sm text-slate-500 dark:text-zinc-500">
             Audit-ready access reviews
           </p>
         </div>
