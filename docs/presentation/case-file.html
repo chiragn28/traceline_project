@@ -1,0 +1,632 @@
+<title>Traceline Case File</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders:wght@400;600;700;800;900&family=Public+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  /* ============ TOKENS — dark-first: bare :root is dark, light is the override ============ */
+  :root{
+    --paper-bg:#eae6d4;
+    --bg:#0b0f11;
+    --surface:#121819;
+    --surface-2:#161e20;
+    --surface-border:#233032;
+    --text:#e9e6da;
+    --text-dim:#9aa8a6;
+    --text-dimmer:#6c7876;
+    --accent:#22b8bd;
+    --accent-bright:#7fe9e6;
+    --accent-text:#06232a;
+    --flag:#d98a34;
+    --flag-bright:#f0ad5f;
+    --line:#223032;
+    --shadow: 0 20px 60px -20px rgba(0,0,0,.6);
+  }
+  @media (prefers-color-scheme: light){
+    :root:not([data-theme="dark"]){
+      --bg:#f1efe4;
+      --surface:#fbfaf3;
+      --surface-2:#ffffff;
+      --surface-border:#ddd8c4;
+      --text:#1a1e19;
+      --text-dim:#565f57;
+      --text-dimmer:#7c847c;
+      --accent:#0d8a8f;
+      --accent-bright:#0aa5ab;
+      --accent-text:#f2ffff;
+      --flag:#a8641c;
+      --flag-bright:#8a4f13;
+      --line:#e3ddc9;
+      --shadow: 0 20px 50px -25px rgba(30,25,10,.25);
+    }
+  }
+  :root[data-theme="light"]{
+    --bg:#f1efe4;
+    --surface:#fbfaf3;
+    --surface-2:#ffffff;
+    --surface-border:#ddd8c4;
+    --text:#1a1e19;
+    --text-dim:#565f57;
+    --text-dimmer:#7c847c;
+    --accent:#0d8a8f;
+    --accent-bright:#0aa5ab;
+    --accent-text:#f2ffff;
+    --flag:#a8641c;
+    --flag-bright:#8a4f13;
+    --line:#e3ddc9;
+    --shadow: 0 20px 50px -25px rgba(30,25,10,.25);
+  }
+  :root[data-theme="dark"]{
+    --bg:#0b0f11;
+    --surface:#121819;
+    --surface-2:#161e20;
+    --surface-border:#233032;
+    --text:#e9e6da;
+    --text-dim:#9aa8a6;
+    --text-dimmer:#6c7876;
+    --accent:#22b8bd;
+    --accent-bright:#7fe9e6;
+    --accent-text:#06232a;
+    --flag:#d98a34;
+    --flag-bright:#f0ad5f;
+    --line:#223032;
+    --shadow: 0 20px 60px -20px rgba(0,0,0,.6);
+  }
+
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Public Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  ::selection{ background:var(--accent); color:var(--accent-text); }
+  a{ color:inherit; }
+  img{max-width:100%;}
+  h1,h2,h3{ text-wrap:balance; margin:0; font-family:'Big Shoulders', sans-serif; font-weight:800; letter-spacing:.01em; }
+  .mono{ font-family:'IBM Plex Mono', monospace; }
+  .tabular{ font-variant-numeric: tabular-nums; }
+
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:.72rem;
+    letter-spacing:.16em;
+    text-transform:uppercase;
+    color:var(--accent);
+    display:flex;
+    align-items:center;
+    gap:.6em;
+  }
+  .eyebrow::before{ content:''; width:1.4em; height:1px; background:var(--accent); display:inline-block; }
+
+  /* ============ LAYOUT SHELL ============ */
+  .shell{ display:flex; align-items:flex-start; }
+
+  nav.tabs{
+    position:sticky; top:0; height:100vh;
+    width:230px; flex:none;
+    display:flex; flex-direction:column;
+    padding:28px 0 28px 28px;
+    border-right:1px solid var(--line);
+    z-index:50;
+  }
+  nav.tabs .brand-logo{
+    display:block;
+    height:30px; width:auto;
+    margin-bottom:10px;
+  }
+  nav.tabs .brand-sub{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:.68rem; color:var(--text-dimmer); letter-spacing:.08em;
+    margin-bottom:34px;
+  }
+  nav.tabs .taglist{ display:flex; flex-direction:column; gap:2px; flex:1; overflow-y:auto; }
+  nav.tabs button{
+    all:unset;
+    cursor:pointer;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:.74rem;
+    letter-spacing:.04em;
+    color:var(--text-dimmer);
+    padding:10px 14px 10px 16px;
+    border-left:2px solid transparent;
+    display:flex; gap:10px; align-items:baseline;
+    transition:color .2s, border-color .2s, background .2s;
+  }
+  nav.tabs button .n{ color:var(--text-dimmer); opacity:.6; }
+  nav.tabs button:hover{ color:var(--text); background:var(--surface); }
+  nav.tabs button.active{
+    color:var(--accent);
+    border-left-color:var(--accent);
+    background:var(--surface);
+  }
+  nav.tabs button.active .n{ color:var(--accent); opacity:1;}
+  nav.tabs .stamp-mini{
+    margin-top:20px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:.62rem;
+    color:var(--text-dimmer);
+    border:1px solid var(--line);
+    padding:10px 12px;
+    letter-spacing:.05em;
+    line-height:1.6;
+  }
+
+  main{ flex:1; min-width:0; }
+
+  section{
+    padding:110px 64px 110px;
+    border-bottom:1px solid var(--line);
+    position:relative;
+    opacity:0;
+    transform:translateY(18px);
+    transition:opacity .7s ease, transform .7s ease;
+  }
+  section.visible{ opacity:1; transform:translateY(0); }
+  @media (prefers-reduced-motion: reduce){
+    section{ opacity:1; transform:none; transition:none; }
+  }
+  section .inner{ max-width:920px; }
+  section.wide .inner{ max-width:1080px; }
+
+  /* ============ HERO ============ */
+  #hero{ padding-top:80px; padding-bottom:70px; }
+  #hero .case-no{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:.78rem; letter-spacing:.14em; color:var(--text-dimmer);
+    margin-bottom:26px;
+  }
+  #hero .case-no b{ color:var(--flag-bright); }
+  #hero h1{
+    font-size: clamp(2.6rem, 6.4vw, 5.4rem);
+    line-height:.98;
+    max-width:14ch;
+  }
+  #hero .dek{
+    margin-top:28px;
+    max-width:62ch;
+    font-size:1.12rem;
+    color:var(--text-dim);
+  }
+  #hero .dek b{ color:var(--text); font-weight:700; }
+
+  .ticker{
+    margin-top:52px;
+    background:var(--surface);
+    border:1px solid var(--surface-border);
+    border-radius:3px;
+    overflow:hidden;
+    box-shadow:var(--shadow);
+  }
+  .ticker .bar{
+    display:flex; align-items:center; gap:8px;
+    padding:9px 14px;
+    border-bottom:1px solid var(--surface-border);
+    font-family:'IBM Plex Mono', monospace;
+    font-size:.68rem; color:var(--text-dimmer); letter-spacing:.06em;
+  }
+  .ticker .dot{ width:8px; height:8px; border-radius:50%; background:var(--line); }
+  .ticker .dot.live{ background:var(--accent); box-shadow:0 0 0 0 var(--accent); animation:pulse 2s infinite; }
+  @media (prefers-reduced-motion: reduce){ .ticker .dot.live{ animation:none; } }
+  @keyframes pulse{
+    0%{ box-shadow:0 0 0 0 rgba(34,184,189,.5); }
+    70%{ box-shadow:0 0 0 6px rgba(34,184,189,0); }
+    100%{ box-shadow:0 0 0 0 rgba(34,184,189,0); }
+  }
+  .ticker .lines{
+    padding:16px 18px 20px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:.82rem;
+    min-height:168px;
+  }
+  .ticker .line{ display:flex; gap:14px; padding:4px 0; color:var(--text-dim); white-space:nowrap; overflow:hidden;}
+  .ticker .line .t{ color:var(--text-dimmer); flex:none; }
+  .ticker .line.flagged{ color:var(--flag-bright); }
+  .ticker .line.flagged .tag{
+    background:var(--flag); color:#1a0f02; font-size:.66rem; padding:1px 7px; border-radius:2px; letter-spacing:.05em; flex:none;
+  }
+
+  /* ============ GENERIC BLOCKS ============ */
+  .lede{
+    font-size:1.5rem; line-height:1.35; max-width:34ch; margin-top:18px; font-weight:600;
+  }
+  .body-copy{ max-width:62ch; color:var(--text-dim); font-size:1.02rem; margin-top:20px; }
+  .body-copy + .body-copy{ margin-top:14px; }
+  .body-copy b{ color:var(--text); font-weight:700; }
+
+  .exhibit-list{ margin-top:36px; display:flex; flex-direction:column; gap:0; border-top:1px solid var(--line); }
+  .exhibit-list .row{ display:grid; grid-template-columns:38px 1fr; gap:22px; padding:20px 0; border-bottom:1px solid var(--line); }
+  .exhibit-list .row .mk{ font-family:'IBM Plex Mono', monospace; color:var(--flag-bright); font-size:.85rem; }
+  .exhibit-list .row h4{ font-family:'Public Sans',sans-serif; font-weight:700; font-size:1.02rem; margin:0 0 4px; }
+  .exhibit-list .row p{ margin:0; color:var(--text-dim); max-width:56ch; }
+
+  /* two-column blind-spot diagram */
+  .split{ margin-top:44px; display:grid; grid-template-columns:1fr 1fr; gap:0; border:1px solid var(--surface-border); }
+  .split .col{ padding:28px 30px; }
+  .split .col:first-child{ border-right:1px solid var(--surface-border); background:var(--surface); }
+  .split .col:last-child{ background:var(--surface-2); }
+  .split h5{ font-family:'IBM Plex Mono',monospace; font-size:.72rem; letter-spacing:.1em; text-transform:uppercase; color:var(--text-dimmer); margin:0 0 16px; }
+  .split ul{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:10px; }
+  .split li{ font-size:.92rem; color:var(--text-dim); padding-left:1.3em; position:relative; }
+  .split .col:first-child li::before{ content:'✓'; position:absolute; left:0; color:var(--accent); }
+  .split .col:last-child li::before{ content:'?'; position:absolute; left:0; color:var(--flag-bright); }
+  .split .gapline{ text-align:center; font-family:'IBM Plex Mono',monospace; font-size:.68rem; letter-spacing:.1em; color:var(--flag-bright); padding:10px 0; background:var(--bg); border-top:1px solid var(--surface-border); border-bottom:1px solid var(--surface-border); grid-column:1/-1; }
+
+  /* pipeline stepper */
+  .pipeline{ margin-top:46px; display:flex; flex-direction:column; }
+  .step{ display:grid; grid-template-columns:64px 1fr; gap:22px; padding:22px 0; border-top:1px solid var(--line); align-items:start; }
+  .step:last-child{ border-bottom:1px solid var(--line); }
+  .step .num{ font-family:'Big Shoulders',sans-serif; font-size:2.1rem; font-weight:800; color:var(--surface-border); line-height:1; }
+  .step h4{ font-family:'Public Sans',sans-serif; font-weight:700; font-size:1.05rem; margin:0 0 6px; }
+  .step p{ margin:0; color:var(--text-dim); max-width:56ch; font-size:.94rem; }
+
+  /* exhibit cards grid */
+  .cards{ margin-top:40px; display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+  @media (max-width:900px){ .cards{ grid-template-columns:1fr 1fr; } }
+  .card{
+    background:var(--surface); border:1px solid var(--surface-border);
+    padding:22px; transition:border-color .25s, transform .25s;
+  }
+  .card:hover{ border-color:var(--accent); transform:translateY(-3px); }
+  .card .tag{ font-family:'IBM Plex Mono',monospace; font-size:.64rem; letter-spacing:.08em; color:var(--accent); text-transform:uppercase; }
+  .card h4{ font-family:'Public Sans',sans-serif; font-weight:700; font-size:1.02rem; margin:10px 0 8px; }
+  .card p{ margin:0; color:var(--text-dim); font-size:.87rem; }
+
+  /* two-products toggle */
+  .toggle{ display:flex; gap:0; margin-top:40px; border:1px solid var(--surface-border); width:fit-content; }
+  .toggle button{
+    all:unset; cursor:pointer;
+    font-family:'IBM Plex Mono',monospace; font-size:.72rem; letter-spacing:.06em; text-transform:uppercase;
+    padding:12px 20px; color:var(--text-dim);
+  }
+  .toggle button + button{ border-left:1px solid var(--surface-border); }
+  .toggle button.active{ background:var(--accent); color:var(--accent-text); }
+  .product-panel{ display:none; margin-top:0; }
+  .product-panel.active{ display:block; }
+  .product-grid{ margin-top:26px; display:grid; grid-template-columns:1fr 1fr; border:1px solid var(--surface-border); }
+  .product-grid .cell{ padding:22px 26px; border-bottom:1px solid var(--surface-border); }
+  .product-grid .cell:nth-child(odd){ border-right:1px solid var(--surface-border); }
+  .product-grid .k{ font-family:'IBM Plex Mono',monospace; font-size:.64rem; letter-spacing:.1em; text-transform:uppercase; color:var(--text-dimmer); margin-bottom:8px; }
+  .product-grid .v{ font-size:.95rem; color:var(--text); font-weight:600; }
+
+  /* evidence / paper artifact */
+  .evidence{
+    background:var(--paper-bg);
+    color:#1c1f19;
+    border:1px solid #cfc9ae;
+    box-shadow:var(--shadow);
+    padding:30px 34px;
+    margin-top:44px;
+    max-width:600px;
+    transform:rotate(-.4deg);
+  }
+  .evidence .stamp{
+    display:inline-flex; align-items:center; gap:8px;
+    border:2px solid #1c1f19; color:#1c1f19;
+    font-family:'IBM Plex Mono',monospace; font-weight:600;
+    font-size:.72rem; letter-spacing:.1em; text-transform:uppercase;
+    padding:6px 12px; border-radius:50px;
+    transform:rotate(-3deg);
+    margin-bottom:16px;
+  }
+  .evidence h4{ font-family:'Public Sans',sans-serif; font-weight:800; font-size:1.15rem; color:#1c1f19; margin:0 0 10px;}
+  .evidence p{ margin:0; color:#3a3d33; font-size:.92rem; }
+  .evidence .hash{ margin-top:14px; font-family:'IBM Plex Mono',monospace; font-size:.72rem; color:#5b5d4d; word-break:break-all; }
+
+  .trust-grid{ margin-top:40px; display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .trust{ padding:22px 24px; border:1px solid var(--surface-border); background:var(--surface); }
+  .trust .eyebrow{ margin-bottom:10px; }
+  .trust p{ margin:0; color:var(--text-dim); font-size:.9rem; }
+
+  /* closing */
+  #closing{ border-bottom:none; text-align:left; padding-bottom:140px; }
+  #closing h2{ font-size:clamp(2.2rem,4.6vw,3.6rem); max-width:16ch; }
+  .cta-row{ margin-top:36px; display:flex; flex-wrap:wrap; gap:14px; }
+  .btn{
+    all:unset; cursor:pointer;
+    display:inline-flex; align-items:center; gap:10px;
+    font-family:'IBM Plex Mono',monospace; font-size:.78rem; letter-spacing:.05em; text-transform:uppercase;
+    padding:15px 22px; border:1px solid var(--surface-border);
+    transition:all .2s;
+  }
+  .btn:hover{ border-color:var(--accent); color:var(--accent); }
+  .btn.primary{ background:var(--accent); color:var(--accent-text); border-color:var(--accent); }
+  .btn.primary:hover{ background:var(--accent-bright); border-color:var(--accent-bright); color:var(--accent-text); }
+  .creds{
+    margin-top:36px; font-family:'IBM Plex Mono',monospace; font-size:.8rem; color:var(--text-dim);
+    border:1px solid var(--line); padding:16px 20px; display:inline-block;
+  }
+  .creds div{ margin-top:4px; }
+  .creds b{ color:var(--text); }
+
+  footer{ padding:30px 64px; font-family:'IBM Plex Mono',monospace; font-size:.68rem; color:var(--text-dimmer); letter-spacing:.05em; }
+
+  @media (max-width:880px){
+    nav.tabs{ display:none; }
+    section{ padding:70px 26px; }
+    .split, .product-grid, .cards{ grid-template-columns:1fr; }
+    .split .col:first-child{ border-right:none; border-bottom:1px solid var(--surface-border); }
+    .product-grid .cell:nth-child(odd){ border-right:none; }
+    footer{ padding:24px 26px; }
+  }
+</style>
+
+<div class="shell">
+  <nav class="tabs" aria-label="Case file sections">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="logo-lockup.png">
+      <img class="brand-logo" src="logo-lockup-light.png" alt="Traceline">
+    </picture>
+    <div class="brand-sub">CASE FILE · SOC2-AR-01</div>
+    <div class="taglist" id="tablist">
+      <button data-target="hero"><span class="n">00</span> Cover</button>
+      <button data-target="pain"><span class="n">01</span> The Complaint</button>
+      <button data-target="blindspot"><span class="n">02</span> The Blind Spot</button>
+      <button data-target="fix"><span class="n">03</span> The Fix</button>
+      <button data-target="pipeline"><span class="n">04</span> The Mechanism</button>
+      <button data-target="exhibits"><span class="n">05</span> The Exhibits</button>
+      <button data-target="two"><span class="n">06</span> Jurisdiction</button>
+      <button data-target="trust"><span class="n">07</span> Chain of Custody</button>
+      <button data-target="closing"><span class="n">08</span> Verdict</button>
+    </div>
+    <div class="stamp-mini">STATUS: <span style="color:var(--accent)">OPEN</span><br>FILED: Q3 2026<br>JURISDICTION: SOC 2 / ISO 27001<br>SECONDARY: DIFC · ADGM · PDPL</div>
+  </nav>
+
+  <main>
+
+    <section id="hero">
+      <div class="inner">
+        <div class="case-no">CASE NO. <b>SOC2-AR-2026-0114</b> &nbsp;·&nbsp; RE: DATABASE ACCESS REVIEW</div>
+        <h1>Who still has<br>access to your<br>database?</h1>
+        <p class="dek">SOC 2 and ISO 27001 both require a periodic access review. For every AWS account, Okta group, and GitHub repo, <b>Vanta and Drata already answer this automatically.</b> For the actual database sitting behind your product, the honest answer today is: nobody's checked since the spreadsheet from last quarter.</p>
+
+        <div class="ticker">
+          <div class="bar"><span class="dot live"></span> LIVE — access_event stream, public.customers</div>
+          <div class="lines" id="tickerLines"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="pain">
+      <div class="inner">
+        <div class="eyebrow">Exhibit A</div>
+        <h2 style="font-size:clamp(1.8rem,3.4vw,2.6rem); margin-top:14px;">The complaint</h2>
+        <p class="lede">A required control, answered by hand.</p>
+        <p class="body-copy">Both frameworks ask the same question every quarter: <b>does every person and service account with access to sensitive data still need it?</b> When the answer lives in AWS or Okta, a GRC platform pulls it automatically. When it lives inside a Postgres or MySQL instance, someone exports a user list, emails each system owner, waits for replies, and pastes the result into a spreadsheet — which becomes the "evidence" an auditor is handed.</p>
+        <div class="exhibit-list">
+          <div class="row"><div class="mk">01</div><div><h4>Dormant grants nobody remembers</h4><p>A contractor's <span class="mono">SELECT</span> permission from a project that ended last year. Still valid. Still nobody's job to notice.</p></div></div>
+          <div class="row"><div class="mk">02</div><div><h4>Service accounts with no owner</h4><p>A pipeline credential shows up in the logs. Whoever set it up left the company. It reads as "system," and reviewers skip past it.</p></div></div>
+          <div class="row"><div class="mk">03</div><div><h4>Evidence that's a screenshot of a spreadsheet</h4><p>No hash, no timestamp, no record of who actually decided what. An auditor who pushes on it gets a shrug.</p></div></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="blindspot" class="wide">
+      <div class="inner">
+        <div class="eyebrow">Exhibit B</div>
+        <h2 style="font-size:clamp(1.8rem,3.4vw,2.6rem); margin-top:14px;">The blind spot</h2>
+        <p class="lede">Managed or self-hosted doesn't matter.</p>
+        <p class="body-copy">The moment it's a real database — RDS-managed or on your own box — the access-review control drops below the API surface every GRC integration actually reads from. Vanta's AWS connector checks the account. It has no idea who's logged into the database running inside it.</p>
+
+        <div class="split">
+          <div class="col">
+            <h5>What Drata / Vanta sees</h5>
+            <ul>
+              <li>IAM policy attached to the instance</li>
+              <li>Encryption at rest, enabled</li>
+              <li>Automated backups, configured</li>
+              <li>Security group rules</li>
+            </ul>
+          </div>
+          <div class="col">
+            <h5>What's actually inside it</h5>
+            <ul>
+              <li>Which database users/roles exist</li>
+              <li>What each one has been <span class="mono">GRANT</span>ed</li>
+              <li>Who queried the <span class="mono">customers</span> table, and when</li>
+              <li>Whether that access is still needed</li>
+            </ul>
+          </div>
+          <div class="gapline">— THE GAP EVERY SPREADSHEET REVIEW LIVES IN —</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="fix">
+      <div class="inner">
+        <div class="eyebrow">Exhibit C</div>
+        <h2 style="font-size:clamp(1.8rem,3.4vw,2.6rem); margin-top:14px;">The fix</h2>
+        <p class="lede">Read-only access, in. Audit-grade evidence, out.</p>
+        <p class="body-copy">Traceline connects to the database itself — never a proxy, never write access, verified read-only at connection time — and tails the access log the database is already writing. It classifies which tables are sensitive, flags accesses from outside an approved region, and generates one review item per (actor, table) pair.</p>
+        <p class="body-copy">The part a spreadsheet review structurally can't do: Traceline also queries the database's <b>live <span class="mono">GRANT</span>s</b> at review time. A permission nobody's used in 90 days still surfaces — tagged <span class="mono" style="color:var(--flag-bright)">dormant grant</span> — instead of quietly not existing in anyone's evidence.</p>
+
+        <div class="evidence">
+          <div class="stamp">✓ Verified read-only</div>
+          <h4>public.customers — pii</h4>
+          <p><b>dormant_contractor</b> · GRANT SELECT, no matching access_event in 90-day window · last seen: never</p>
+          <div class="hash">SHA-256 4a1e9d…c8f0b3 · generated 2026-Q3 · immutable once decided</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="pipeline">
+      <div class="inner">
+        <div class="eyebrow">Exhibit C — continued</div>
+        <h2 style="font-size:clamp(1.8rem,3.4vw,2.6rem); margin-top:14px;">The mechanism</h2>
+        <p class="lede">Eight steps. No raw query text ever stored.</p>
+        <div class="pipeline">
+          <div class="step"><div class="num">01</div><div><h4>Connect</h4><p>A read-only credential. Verified read-only at connection time, checked again on demand.</p></div></div>
+          <div class="step"><div class="num">02</div><div><h4>Discover tables</h4><p>Schema introspection finds every table on the connected source.</p></div></div>
+          <div class="step"><div class="num">03</div><div><h4>Tag classification</h4><p>pii, financial, public — append-only, so a report always reflects the tag active at the time access occurred.</p></div></div>
+          <div class="step"><div class="num">04</div><div><h4>Ingest</h4><p>Tails the access log, dedupes, checkpoints. Coverage gaps are surfaced, never hidden.</p></div></div>
+          <div class="step"><div class="num">05</div><div><h4>Flag violations</h4><p>Region rules run against observed access. Unknown region counts as a candidate, not a pass.</p></div></div>
+          <div class="step"><div class="num">06</div><div><h4>Run a review cycle</h4><p>One item per (actor, sensitive table) pair — from observed access, live grants, or both.</p></div></div>
+          <div class="step"><div class="num">07</div><div><h4>Reviewer decides</h4><p>Approve or revoke. Immutable once made — a wrong call is corrected by the next cycle, not edited.</p></div></div>
+          <div class="step"><div class="num">08</div><div><h4>Export evidence</h4><p>Hash-stamped, timestamped CSV — the shape of evidence an auditor already expects to see.</p></div></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="exhibits" class="wide">
+      <div class="inner">
+        <div class="eyebrow">Exhibit D</div>
+        <h2 style="font-size:clamp(1.8rem,3.4vw,2.6rem); margin-top:14px;">On the record</h2>
+        <p class="lede">Seven pages. Nothing decorative.</p>
+        <div class="cards">
+          <div class="card"><div class="tag">Connect</div><h4>Data Sources</h4><p>Read-only credential, validated for real, with a live logging-coverage badge.</p></div>
+          <div class="card"><div class="tag">Map</div><h4>Lineage</h4><p>Declared pipelines and observed access, drawn as one graph — zoomable, hoverable.</p></div>
+          <div class="card"><div class="tag">Watch</div><h4>Access Logs</h4><p>Every event: actor, type, table, region, and how confident that region actually is.</p></div>
+          <div class="card"><div class="tag">Flag</div><h4>Violations</h4><p>Region rules checked against real access — staging traffic excluded on purpose.</p></div>
+          <div class="card"><div class="tag">Decide</div><h4>Access Reviews</h4><p>One item per actor/table pair. Approve, revoke, or leave for the next cycle.</p></div>
+          <div class="card"><div class="tag">Prove</div><h4>Reports</h4><p>Hash-stamped CSV exports, generated by the same code that ran the review.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="two">
+      <div class="inner">
+        <div class="eyebrow">Exhibit E</div>
+        <h2 style="font-size:clamp(1.8rem,3.4vw,2.6rem); margin-top:14px;">Jurisdiction</h2>
+        <p class="lede">Same evidence. Two audiences.</p>
+        <p class="body-copy">One access_event stream, two different consumers reading it — the review workflow above, and a narrower region-rule engine for teams under Gulf-specific residency law.</p>
+
+        <div class="toggle" id="productToggle">
+          <button class="active" data-panel="soc2">SOC 2 / ISO 27001</button>
+          <button data-panel="mena">MENA Residency</button>
+        </div>
+
+        <div class="product-panel active" id="panel-soc2">
+          <div class="product-grid">
+            <div class="cell"><div class="k">Buyer</div><div class="v">Eng lead or CTO, Series A–C · or a fractional CISO firm</div></div>
+            <div class="cell"><div class="k">Positioning</div><div class="v">Complement to Vanta / Drata / Secureframe</div></div>
+            <div class="cell"><div class="k">What it proves</div><div class="v">A quarterly access review, signed and exportable</div></div>
+            <div class="cell"><div class="k">Where it lives</div><div class="v">Sits next to your existing GRC platform, not instead of it</div></div>
+          </div>
+        </div>
+        <div class="product-panel" id="panel-mena">
+          <div class="product-grid">
+            <div class="cell"><div class="k">Buyer</div><div class="v">Compliance officer or DPO at a DIFC / ADGM fintech</div></div>
+            <div class="cell"><div class="k">Positioning</div><div class="v">Standalone audit layer</div></div>
+            <div class="cell"><div class="k">What it proves</div><div class="v">PDPL / DIFC / ADGM / VARA region-rule compliance</div></div>
+            <div class="cell"><div class="k">Where it lives</div><div class="v">The region-rule engine, running on the same access log</div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="trust">
+      <div class="inner">
+        <div class="eyebrow">Exhibit F</div>
+        <h2 style="font-size:clamp(1.8rem,3.4vw,2.6rem); margin-top:14px;">Chain of custody</h2>
+        <p class="lede">Why the evidence holds up.</p>
+        <div class="trust-grid">
+          <div class="trust"><div class="eyebrow">Read-only, verified</div><p>Connection is checked for write grants at setup and on demand — not just assumed.</p></div>
+          <div class="trust"><div class="eyebrow">Row-level security</div><p>Postgres RLS enforces tenant isolation at the database itself, not only in application code.</p></div>
+          <div class="trust"><div class="eyebrow">Real grant introspection</div><p>Reads <span class="mono">pg_class.relacl</span> directly — not the grantor-restricted view most tools stop at.</p></div>
+          <div class="trust"><div class="eyebrow">Immutable decisions</div><p>A review decision, once made, is never edited — only corrected by the next cycle.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="closing">
+      <div class="inner">
+        <div class="eyebrow">Verdict</div>
+        <h2>The control your GRC platform can't reach. Closed.</h2>
+        <p class="body-copy">Traceline doesn't replace Vanta, Drata, or Secureframe — it closes the one control they were never built to reach: the database sitting quietly behind everything else.</p>
+        <div class="cta-row">
+          <a class="btn primary" href="https://traceline-pi.vercel.app" target="_blank" rel="noopener">Open the live case file →</a>
+        </div>
+        <div class="creds">
+          CLEARANCE — DEMO ACCESS<br>
+          <div>EMAIL &nbsp;<b>admin@demo-fintech.ae</b></div>
+          <div>PASS &nbsp;&nbsp;<b>demo-password-change-me</b></div>
+        </div>
+      </div>
+    </section>
+
+    <footer>TRACELINE · CASE FILE SOC2-AR-2026-0114 · READ-ONLY BY DESIGN</footer>
+  </main>
+</div>
+
+<script>
+(function(){
+  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // ---- scroll reveal ----
+  var sections = document.querySelectorAll('section');
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){ if(e.isIntersecting) e.target.classList.add('visible'); });
+  }, { threshold:.15 });
+  sections.forEach(function(s){ io.observe(s); });
+
+  // ---- tab nav active state + click-to-scroll ----
+  var buttons = document.querySelectorAll('#tablist button');
+  var map = {};
+  buttons.forEach(function(b){
+    map[b.dataset.target] = b;
+    b.addEventListener('click', function(){
+      var el = document.getElementById(b.dataset.target);
+      if(el) el.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block:'start' });
+    });
+  });
+  var navIo = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      var btn = map[e.target.id];
+      if(!btn) return;
+      if(e.isIntersecting) {
+        buttons.forEach(function(b){ b.classList.remove('active'); });
+        btn.classList.add('active');
+      }
+    });
+  }, { rootMargin:'-45% 0px -45% 0px' });
+  sections.forEach(function(s){ navIo.observe(s); });
+
+  // ---- terminal ticker ----
+  var lines = [
+    { t:'09:14:02', text:'demo_app · READ · public.customers · uae · high', flag:false },
+    { t:'09:14:05', text:'priya.raghunathan · READ · public.customers · uae · high', flag:false },
+    { t:'09:14:11', text:'svc-reporting · READ · public.transactions · uae · high', flag:false },
+    { t:'09:14:19', text:'priya.raghunathan · READ · public.customers · unknown · low', flag:true, tag:'REVIEW' },
+    { t:'09:14:24', text:'legacy_batch_job · READ · public.transactions · unknown', flag:false },
+    { t:'09:14:31', text:'dormant_contractor · GRANT SELECT · 0 accesses / 90d', flag:true, tag:'DORMANT' }
+  ];
+  var wrap = document.getElementById('tickerLines');
+  function renderStatic(){
+    wrap.innerHTML = lines.map(function(l){
+      return '<div class="line'+(l.flag?' flagged':'')+'"><span class="t mono">'+l.t+'</span><span>'+l.text+'</span>'+(l.flag?'<span class="tag mono">'+l.tag+'</span>':'')+'</div>';
+    }).join('');
+  }
+  if(reduceMotion){
+    renderStatic();
+  } else {
+    var i = 0;
+    function tick(){
+      if(i >= lines.length){
+        setTimeout(function(){ wrap.innerHTML=''; i=0; tick(); }, 2200);
+        return;
+      }
+      var l = lines[i];
+      var div = document.createElement('div');
+      div.className = 'line'+(l.flag?' flagged':'');
+      div.innerHTML = '<span class="t mono">'+l.t+'</span><span>'+l.text+'</span>'+(l.flag?'<span class="tag mono">'+l.tag+'</span>':'');
+      wrap.appendChild(div);
+      i++;
+      setTimeout(tick, 650);
+    }
+    tick();
+  }
+
+  // ---- two-products toggle ----
+  var toggleBtns = document.querySelectorAll('#productToggle button');
+  toggleBtns.forEach(function(b){
+    b.addEventListener('click', function(){
+      toggleBtns.forEach(function(x){ x.classList.remove('active'); });
+      b.classList.add('active');
+      document.querySelectorAll('.product-panel').forEach(function(p){ p.classList.remove('active'); });
+      document.getElementById('panel-'+b.dataset.panel).classList.add('active');
+    });
+  });
+})();
+</script>

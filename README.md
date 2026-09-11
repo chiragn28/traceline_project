@@ -1,6 +1,9 @@
 <div align="center">
 
-# Traceline
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/brand/logo-lockup.png">
+  <img src="docs/brand/logo-lockup-light.png" alt="Traceline" width="360">
+</picture>
 
 **Automated, audit-ready database access reviews.**
 The part of SOC 2 Type II and ISO 27001 that Vanta, Drata, and Secureframe
