@@ -229,7 +229,19 @@ def upgrade() -> None:
         $$;
         """
     )
-    op.execute("GRANT CONNECT ON DATABASE traceline TO traceline_app")
+    # Database name isn't hardcoded -- a managed Postgres instance (e.g.
+    # Railway's Postgres plugin) rarely names its database "traceline", so
+    # this grants against whatever database the migration is actually
+    # running in.
+    op.execute(
+        """
+        DO $$
+        BEGIN
+            EXECUTE format('GRANT CONNECT ON DATABASE %I TO traceline_app', current_database());
+        END
+        $$;
+        """
+    )
     op.execute("GRANT USAGE ON SCHEMA public TO traceline_app")
 
     for table in TENANT_TABLES:
