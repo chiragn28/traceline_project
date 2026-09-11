@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api, ApiError, DataSource } from "@/lib/api-client";
+import { canManage, useCurrentUser } from "@/lib/CurrentUserContext";
 
 const emptyForm = {
   name: "",
@@ -15,6 +16,9 @@ const emptyForm = {
 };
 
 export default function DataSourcesPage() {
+  const user = useCurrentUser();
+  const canConnect = canManage(user);
+  const canRetest = canManage(user) || user.role === "reviewer";
   const [sources, setSources] = useState<DataSource[]>([]);
   const [form, setForm] = useState(emptyForm);
   const [showForm, setShowForm] = useState(false);
@@ -54,17 +58,19 @@ export default function DataSourcesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold">Data Sources</h1>
-          <p className="text-sm text-slate-500">
+          <h1 className="text-xl font-semibold dark:text-zinc-100">Data Sources</h1>
+          <p className="text-sm text-slate-500 dark:text-zinc-400">
             Postgres only in this MVP. Read-only credentials strongly recommended.
           </p>
         </div>
-        <button className="btn-primary" onClick={() => setShowForm((v) => !v)}>
-          {showForm ? "Cancel" : "Connect a data source"}
-        </button>
+        {canConnect && (
+          <button className="btn-primary" onClick={() => setShowForm((v) => !v)}>
+            {showForm ? "Cancel" : "Connect a data source"}
+          </button>
+        )}
       </div>
 
-      {showForm && (
+      {showForm && canConnect && (
         <form onSubmit={handleSubmit} className="card grid grid-cols-2 gap-4">
           <Field label="Name">
             <input
@@ -131,11 +137,11 @@ export default function DataSourcesPage() {
               checked={form.is_production}
               onChange={(e) => setForm({ ...form, is_production: e.target.checked })}
             />
-            <label htmlFor="is_production" className="text-sm text-slate-700">
+            <label htmlFor="is_production" className="text-sm text-slate-700 dark:text-zinc-300">
               This is a production source (non-production sources are excluded from residency violation checks)
             </label>
           </div>
-          {error && <p className="col-span-2 text-sm text-red-600">{error}</p>}
+          {error && <p className="col-span-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
           <div className="col-span-2">
             <button type="submit" disabled={submitting} className="btn-primary">
               {submitting ? "Connecting..." : "Connect"}
@@ -150,33 +156,37 @@ export default function DataSourcesPage() {
             <div className="flex items-start justify-between">
               <div>
                 <div className="flex items-center gap-2">
-                  <h2 className="font-medium text-slate-900">{s.name}</h2>
-                  {!s.is_production && <span className="badge bg-slate-100 text-slate-600">non-production</span>}
+                  <h2 className="font-medium text-slate-900 dark:text-zinc-100">{s.name}</h2>
+                  {!s.is_production && (
+                    <span className="badge bg-slate-100 text-slate-600 dark:bg-zinc-800 dark:text-zinc-300">non-production</span>
+                  )}
                   {s.read_only_verified === true && (
-                    <span className="badge bg-emerald-100 text-emerald-700">read-only verified</span>
+                    <span className="badge bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400">read-only verified</span>
                   )}
                   {s.read_only_verified === false && (
-                    <span className="badge bg-red-100 text-red-700">not read-only</span>
+                    <span className="badge bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400">not read-only</span>
                   )}
                   {s.read_only_verified === null && (
-                    <span className="badge bg-slate-100 text-slate-500">unverified</span>
+                    <span className="badge bg-slate-100 text-slate-500 dark:bg-zinc-800 dark:text-zinc-400">unverified</span>
                   )}
                 </div>
-                <p className="mt-1 text-sm text-slate-500">
+                <p className="mt-1 text-sm text-slate-500 dark:text-zinc-400">
                   {s.username}@{s.host}:{s.port}/{s.dbname}
                 </p>
                 {s.read_only_warning && (
-                  <p className="mt-2 text-sm text-amber-700">⚠ {s.read_only_warning}</p>
+                  <p className="mt-2 text-sm text-amber-700 dark:text-amber-400">⚠ {s.read_only_warning}</p>
                 )}
               </div>
-              <button className="btn-secondary" onClick={() => retest(s.id)}>
-                Re-check
-              </button>
+              {canRetest && (
+                <button className="btn-secondary" onClick={() => retest(s.id)}>
+                  Re-check
+                </button>
+              )}
             </div>
           </div>
         ))}
         {sources.length === 0 && !showForm && (
-          <p className="text-sm text-slate-500">No data sources connected yet.</p>
+          <p className="text-sm text-slate-500 dark:text-zinc-400">No data sources connected yet.</p>
         )}
       </div>
     </div>
@@ -186,7 +196,7 @@ export default function DataSourcesPage() {
 function Field({ label, children }: { label: string; children: React.ReactElement }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-sm font-medium text-slate-700">{label}</span>
+      <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-zinc-300">{label}</span>
       {children}
     </label>
   );

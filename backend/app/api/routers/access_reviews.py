@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.api.deps import CurrentUser, get_current_user, get_db
+from app.api.deps import CurrentUser, get_current_user, get_db, require_role
 from app.models.access_review import AccessReviewCycle, AccessReviewItem
 from app.models.actor_ownership import ActorOwnership
 from app.models.report import Report
@@ -41,7 +41,12 @@ def list_cycles(db: Session = Depends(get_db)) -> list[AccessReviewCycleOut]:
     return out
 
 
-@router.post("/access-reviews", response_model=AccessReviewCycleOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/access-reviews",
+    response_model=AccessReviewCycleOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_role("admin"))],
+)
 def create_cycle(
     body: AccessReviewCycleCreate,
     db: Session = Depends(get_db),
@@ -92,7 +97,11 @@ def list_items(
     return out
 
 
-@router.post("/access-reviews/items/{item_id}/decision", response_model=AccessReviewItemOut)
+@router.post(
+    "/access-reviews/items/{item_id}/decision",
+    response_model=AccessReviewItemOut,
+    dependencies=[Depends(require_role("admin", "reviewer"))],
+)
 def decide_item(
     item_id: UUID,
     body: ReviewDecisionRequest,
@@ -113,7 +122,12 @@ def decide_item(
     return row
 
 
-@router.post("/access-reviews/{cycle_id}/report", response_model=ReportOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/access-reviews/{cycle_id}/report",
+    response_model=ReportOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_role("admin", "reviewer"))],
+)
 def generate_cycle_report(
     cycle_id: UUID,
     db: Session = Depends(get_db),
@@ -145,7 +159,7 @@ def list_actor_ownership(db: Session = Depends(get_db)) -> list[ActorOwnership]:
     return list(db.scalars(select(ActorOwnership)))
 
 
-@router.post("/actor-ownership", status_code=status.HTTP_201_CREATED)
+@router.post("/actor-ownership", status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_role("admin"))])
 def set_actor_ownership(
     body: ActorOwnershipSet,
     db: Session = Depends(get_db),

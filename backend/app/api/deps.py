@@ -42,3 +42,34 @@ def get_db(current_user: CurrentUser = Depends(get_current_user)) -> Generator[S
     caller's workspace_id, and Postgres RLS (migration 0001) rejects
     anything else even if a query forgets its own WHERE clause."""
     yield from get_workspace_db(current_user.workspace_id)
+
+
+def get_current_db_user(current_user: CurrentUser = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Loads the live User row for the caller. Deliberately a fresh query
+    per request rather than trusting a role baked into the JWT at login
+    time -- a role change (e.g. demoting an admin) should take effect on
+    the very next request, not wait for the token to expire."""
+    from app.models.user import User  # local import avoids a circular import at module load time
+
+    user = db.get(User, current_user.user_id)
+    if user is None:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Session user not found")
+    return user
+
+
+def require_role(*allowed_roles: str):
+    """Role check, separate from `can_review` (see User model): 'can
+    administer the workspace' and 'is an authorized reviewer' are
+    different questions. Use on any endpoint that mutates configuration
+    (data sources, tags, region rules, team, workspace settings) rather
+    than just viewing data."""
+
+    def _dependency(user=Depends(get_current_db_user)):
+        if user.role not in allowed_roles:
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN,
+                f"This action requires one of these roles: {', '.join(allowed_roles)} (you are '{user.role}')",
+            )
+        return user
+
+    return _dependency

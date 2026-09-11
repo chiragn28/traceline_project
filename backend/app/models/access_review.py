@@ -33,11 +33,13 @@ class AccessReviewItem(Base):
     """One (table, actor) pair that needs a reviewer's sign-off: 'is this
     person/service account's access to this sensitive table still needed?'
 
-    'Has access' here means *observed access* -- at least one access_event
-    against this table within the cycle's lookback window -- not a GRANT
-    introspection. This is a known MVP limitation (see README): a
-    dormant-but-still-granted permission that nobody has exercised recently
-    will not appear.
+    'Has access' combines two signals, tracked separately via
+    `access_basis`: *observed* access (an access_event in the lookback
+    window) and a *live GRANT* found via information_schema at cycle
+    generation time. A dormant-but-still-granted permission nobody has
+    exercised recently now still surfaces as a 'granted_only' item -- this
+    was a known gap in earlier versions (observed-access-only), closed by
+    querying the source's actual grants during cycle generation.
 
     Decisions are immutable once made (see app.services.access_review) --
     a wrong sign-off gets corrected in the next cycle, not silently edited,
@@ -70,9 +72,15 @@ class AccessReviewItem(Base):
     # nobody has claimed ownership of yet via app.models.ActorOwnership.
     owner_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=True)
 
-    access_count: Mapped[int] = mapped_column(Integer, nullable=False)
-    first_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    # observed: seen in access_event only. granted_only: a live GRANT found
+    # via information_schema, but no matching access_event in the lookback
+    # window (a dormant permission -- exactly what a review should catch,
+    # and something an observed-access-only view would miss entirely).
+    # both: seen in both. See app.services.access_review.
+    access_basis: Mapped[str] = mapped_column(String(20), default="observed", nullable=False)
+    access_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    first_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     decision: Mapped[str] = mapped_column(String(20), default="pending", nullable=False)  # pending|approved|revoked
     decision_reason: Mapped[str | None] = mapped_column(Text, nullable=True)

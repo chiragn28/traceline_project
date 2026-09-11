@@ -40,3 +40,9 @@ GRANT CONNECT ON DATABASE demo_customer TO traceline_readonly;
 GRANT USAGE ON SCHEMA public TO traceline_readonly;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO traceline_readonly;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO traceline_readonly;
+
+-- A role with a real grant but no query activity -- demonstrates the
+-- access review's grant-introspection path (a dormant-but-still-granted
+-- permission an observed-access-only view would otherwise never surface).
+CREATE ROLE dormant_contractor WITH LOGIN PASSWORD 'unused_demo_password';
+GRANT SELECT ON customers TO dormant_contractor;

@@ -1,7 +1,10 @@
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, EmailStr
+
+Role = Literal["admin", "reviewer", "viewer"]
 
 
 class UserOut(BaseModel):
@@ -17,8 +20,10 @@ class UserOut(BaseModel):
 class UserCreate(BaseModel):
     email: EmailStr
     password: str
-    can_review: bool = True
+    role: Role = "viewer"
+    can_review: bool = False
 
 
 class UserUpdate(BaseModel):
+    role: Role
     can_review: bool

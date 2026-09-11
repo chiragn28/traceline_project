@@ -2,7 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.api.deps import CurrentUser, get_current_user
+from app.api.deps import get_current_db_user
+from app.core.config import settings
 from app.core.security import create_access_token, verify_password
 from app.db.session import get_admin_db
 from app.models.user import User
@@ -28,11 +29,13 @@ def login(body: LoginRequest, response: Response, db: Session = Depends(get_admi
         COOKIE_NAME,
         token,
         httponly=True,
-        samesite="lax",
-        secure=False,  # TODO: set True once served over HTTPS in deployment
+        samesite=settings.cookie_samesite,
+        secure=settings.cookie_secure,
         max_age=60 * 60 * 8,
     )
-    return LoginResponse(user_id=str(user.id), workspace_id=str(user.workspace_id), email=user.email)
+    return LoginResponse(
+        user_id=str(user.id), workspace_id=str(user.workspace_id), email=user.email, role=user.role, can_review=user.can_review
+    )
 
 
 @router.post("/logout")
@@ -42,7 +45,7 @@ def logout(response: Response) -> dict:
 
 
 @router.get("/me", response_model=LoginResponse)
-def me(current_user: CurrentUser = Depends(get_current_user)) -> LoginResponse:
+def me(user: User = Depends(get_current_db_user)) -> LoginResponse:
     return LoginResponse(
-        user_id=str(current_user.user_id), workspace_id=str(current_user.workspace_id), email=current_user.email
+        user_id=str(user.id), workspace_id=str(user.workspace_id), email=user.email, role=user.role, can_review=user.can_review
     )

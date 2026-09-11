@@ -35,12 +35,12 @@ export default function AccessLogsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-semibold">Access Logs</h1>
-        <p className="text-sm text-slate-500">Who accessed what, when, and from where -- as best we can tell.</p>
+        <h1 className="text-xl font-semibold dark:text-zinc-100">Access Logs</h1>
+        <p className="text-sm text-slate-500 dark:text-zinc-400">Who accessed what, when, and from where -- as best we can tell.</p>
       </div>
 
       {gaps.length > 0 && (
-        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-800">
+        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
           <p className="font-medium">⚠ Logging coverage gap(s) detected for this source</p>
           <ul className="mt-1 list-inside list-disc">
             {gaps.map((g) => (
@@ -97,13 +97,13 @@ export default function AccessLogsPage() {
                 <td className="whitespace-nowrap">{new Date(e.occurred_at).toISOString().replace("T", " ").slice(0, 19)}</td>
                 <td>
                   {e.actor_identifier}
-                  <span className="ml-1 badge bg-slate-100 text-slate-500">{e.actor_type}</span>
+                  <span className="ml-1 badge bg-slate-100 text-slate-500 dark:bg-zinc-800 dark:text-zinc-400">{e.actor_type}</span>
                 </td>
                 <td>{e.query_type}</td>
                 <td>
                   {e.schema_name_snapshot ? `${e.schema_name_snapshot}.${e.table_name_snapshot}` : "—"}
                   {!e.table_id && e.table_name_snapshot && (
-                    <span className="ml-1 text-xs text-slate-400">(table since dropped)</span>
+                    <span className="ml-1 text-xs text-slate-400 dark:text-zinc-500">(table since dropped)</span>
                   )}
                 </td>
                 <td>{e.source_ip || "—"}</td>
@@ -112,8 +112,8 @@ export default function AccessLogsPage() {
                   <span
                     className={`badge ${
                       e.region_confidence === "high"
-                        ? "bg-emerald-100 text-emerald-700"
-                        : "bg-slate-100 text-slate-500"
+                        ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400"
+                        : "bg-slate-100 text-slate-500 dark:bg-zinc-800 dark:text-zinc-400"
                     }`}
                     title={e.region_source || undefined}
                   >
@@ -124,7 +124,7 @@ export default function AccessLogsPage() {
             ))}
             {events.length === 0 && (
               <tr>
-                <td colSpan={6} className="text-slate-400">
+                <td colSpan={6} className="text-slate-400 dark:text-zinc-500">
                   No access events match these filters yet.
                 </td>
               </tr>

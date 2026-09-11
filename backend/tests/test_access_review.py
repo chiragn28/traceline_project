@@ -119,3 +119,84 @@ def test_staleness_only_applies_to_pending_items():
 
     recent_cycle_time = datetime.now(timezone.utc) - timedelta(days=5)
     assert is_stale(recent_cycle_time, "pending", stale_after_days=30) is False
+
+
+class _FakeGrant:
+    def __init__(self, grantee):
+        self.grantee = grantee
+        self.privilege = "SELECT"
+
+
+class _FakeConnector:
+    def __init__(self, grantees):
+        self._grantees = grantees
+
+    def list_table_grants(self, schema_name, table_name):
+        return [_FakeGrant(g) for g in self._grantees]
+
+
+def test_dormant_grant_surfaces_as_granted_only_item(
+    admin_db, make_workspace, make_user, make_data_source, monkeypatch
+):
+    """The exact gap a purely observed-access review would miss: a role
+    that was granted SELECT but hasn't queried the table recently must
+    still show up, flagged distinctly, not be silently absent."""
+    import app.services.access_review as access_review_module
+
+    ws = make_workspace()
+    user = make_user(ws)
+    ds = make_data_source(ws)
+
+    table = _make_table(admin_db, ws, ds, "customers")
+    _tag_table(admin_db, ws, table, "pii", user)
+    # One actor with real recent activity, to prove 'both' classification too.
+    _make_access_event(admin_db, ws, ds, table, actor="active_user")
+    admin_db.commit()
+
+    monkeypatch.setattr(
+        access_review_module,
+        "build_connector",
+        lambda data_source: _FakeConnector(["active_user", "dormant_contractor"]),
+    )
+
+    result = generate_review_cycle(admin_db, ws.id, user.id, "Q3 2026")
+    assert result.item_count == 2
+
+    items = {
+        i.actor_identifier: i
+        for i in admin_db.scalars(select(AccessReviewItem).where(AccessReviewItem.cycle_id == result.cycle_id))
+    }
+    assert items["dormant_contractor"].access_basis == "granted_only"
+    assert items["dormant_contractor"].access_count == 0
+    assert items["dormant_contractor"].first_seen_at is None
+    assert items["active_user"].access_basis == "both"
+    assert items["active_user"].access_count == 1
+
+
+def test_grant_introspection_failure_degrades_to_observed_only(
+    admin_db, make_workspace, make_user, make_data_source, monkeypatch
+):
+    """An unreachable source (bad credentials, network blip) during cycle
+    generation must not fail the whole cycle -- it degrades that source to
+    observed-access-only, which is exactly what earlier versions always did."""
+    import app.services.access_review as access_review_module
+
+    ws = make_workspace()
+    user = make_user(ws)
+    ds = make_data_source(ws)
+
+    table = _make_table(admin_db, ws, ds, "customers")
+    _tag_table(admin_db, ws, table, "pii", user)
+    _make_access_event(admin_db, ws, ds, table, actor="active_user")
+    admin_db.commit()
+
+    def _raise(*args, **kwargs):
+        raise ConnectionError("simulated unreachable source")
+
+    monkeypatch.setattr(access_review_module, "build_connector", _raise)
+
+    result = generate_review_cycle(admin_db, ws.id, user.id, "Q3 2026")
+
+    assert result.item_count == 1
+    item = admin_db.scalar(select(AccessReviewItem).where(AccessReviewItem.cycle_id == result.cycle_id))
+    assert item.access_basis == "observed"

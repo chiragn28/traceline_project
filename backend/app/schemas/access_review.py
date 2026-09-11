@@ -31,9 +31,10 @@ class AccessReviewItemOut(BaseModel):
     actor_type: str
     owner_user_id: UUID | None
     owner_email: str | None = None
+    access_basis: str = "observed"
     access_count: int
-    first_seen_at: datetime
-    last_seen_at: datetime
+    first_seen_at: datetime | None
+    last_seen_at: datetime | None
     decision: str
     decision_reason: str | None
     reviewed_by_user_id: UUID | None

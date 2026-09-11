@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.api.deps import CurrentUser, get_current_user, get_db
+from app.api.deps import CurrentUser, get_current_user, get_db, require_role
 from app.models.ip_region_map import IpRegionMap
 from app.models.region_rule import RegionRule
 from app.models.violation import Violation
@@ -24,7 +24,12 @@ def list_region_rules(db: Session = Depends(get_db)) -> list[RegionRule]:
     return list(db.scalars(select(RegionRule)))
 
 
-@router.post("/region-rules", response_model=RegionRuleOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/region-rules",
+    response_model=RegionRuleOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_role("admin"))],
+)
 def create_region_rule(
     body: RegionRuleCreate,
     db: Session = Depends(get_db),
@@ -47,7 +52,12 @@ def list_ip_region_map(db: Session = Depends(get_db)) -> list[IpRegionMap]:
     return list(db.scalars(select(IpRegionMap)))
 
 
-@router.post("/ip-region-map", response_model=IpRegionMapOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/ip-region-map",
+    response_model=IpRegionMapOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_role("admin"))],
+)
 def create_ip_region_map_entry(
     body: IpRegionMapCreate,
     db: Session = Depends(get_db),

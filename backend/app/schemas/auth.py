@@ -10,3 +10,5 @@ class LoginResponse(BaseModel):
     user_id: str
     workspace_id: str
     email: str
+    role: str = "admin"
+    can_review: bool = True

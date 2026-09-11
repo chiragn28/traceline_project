@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.api.deps import CurrentUser, get_current_user, get_db
+from app.api.deps import CurrentUser, get_current_user, get_db, require_role
 from app.core.security import hash_password
 from app.models.user import User
 from app.schemas.user import UserCreate, UserOut, UserUpdate
@@ -17,7 +17,7 @@ def list_users(db: Session = Depends(get_db)) -> list[User]:
     return list(db.scalars(select(User)))
 
 
-@router.post("", response_model=UserOut, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=UserOut, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_role("admin"))])
 def create_user(
     body: UserCreate,
     db: Session = Depends(get_db),
@@ -27,11 +27,14 @@ def create_user(
     # teammate to the caller's own workspace, which is what "let the
     # customer configure who's allowed to be a reviewer" requires: a
     # single admin account can't designate a second reviewer that doesn't
-    # exist yet.
+    # exist yet. New teammates default to the least-privileged role
+    # (viewer, can't review) -- an admin opts them into more, not the
+    # other way around.
     user = User(
         workspace_id=current_user.workspace_id,
         email=body.email,
         hashed_password=hash_password(body.password),
+        role=body.role,
         can_review=body.can_review,
     )
     db.add(user)
@@ -40,11 +43,12 @@ def create_user(
     return user
 
 
-@router.patch("/{user_id}", response_model=UserOut)
+@router.patch("/{user_id}", response_model=UserOut, dependencies=[Depends(require_role("admin"))])
 def update_user(user_id: UUID, body: UserUpdate, db: Session = Depends(get_db)) -> User:
     user = db.get(User, user_id)
     if not user:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+    user.role = body.role
     user.can_review = body.can_review
     db.commit()
     db.refresh(user)

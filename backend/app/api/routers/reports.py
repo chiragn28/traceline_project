@@ -5,7 +5,7 @@ from fastapi.responses import Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.api.deps import CurrentUser, get_current_user, get_db
+from app.api.deps import CurrentUser, get_current_user, get_db, require_role
 from app.models.report import Report
 from app.schemas.report import ReportCreate, ReportOut
 from app.services.reports import generate_report_csv, verify_report_integrity
@@ -18,7 +18,9 @@ def list_reports(db: Session = Depends(get_db)) -> list[Report]:
     return list(db.scalars(select(Report).order_by(Report.generated_at.desc())))
 
 
-@router.post("", response_model=ReportOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "", response_model=ReportOut, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_role("admin", "reviewer"))]
+)
 def create_report(
     body: ReportCreate,
     db: Session = Depends(get_db),

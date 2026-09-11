@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { api, ApiError, RegionRule, Violation } from "@/lib/api-client";
+import { canManage, useCurrentUser } from "@/lib/CurrentUserContext";
 
 export default function ViolationsPage() {
+  const canManageRules = canManage(useCurrentUser());
   const [violations, setViolations] = useState<Violation[]>([]);
   const [rules, setRules] = useState<RegionRule[]>([]);
   const [showRuleForm, setShowRuleForm] = useState(false);
@@ -38,22 +40,24 @@ export default function ViolationsPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-xl font-semibold">Violations</h1>
-        <p className="text-sm text-slate-500">Rule-based residency checks against your region rules below.</p>
+        <h1 className="text-xl font-semibold dark:text-zinc-100">Violations</h1>
+        <p className="text-sm text-slate-500 dark:text-zinc-400">Rule-based residency checks against your region rules below.</p>
       </div>
 
       <section className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="font-medium text-slate-800">Region rules</h2>
-          <button className="btn-secondary" onClick={() => setShowRuleForm((v) => !v)}>
-            {showRuleForm ? "Cancel" : "Add rule"}
-          </button>
+          <h2 className="font-medium text-slate-800 dark:text-zinc-200">Region rules</h2>
+          {canManageRules && (
+            <button className="btn-secondary" onClick={() => setShowRuleForm((v) => !v)}>
+              {showRuleForm ? "Cancel" : "Add rule"}
+            </button>
+          )}
         </div>
 
-        {showRuleForm && (
+        {showRuleForm && canManageRules && (
           <form onSubmit={createRule} className="card grid grid-cols-3 gap-4">
             <label className="block">
-              <span className="mb-1 block text-sm font-medium text-slate-700">Classification tag</span>
+              <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-zinc-300">Classification tag</span>
               <input
                 className="input"
                 value={ruleForm.classification_tag}
@@ -61,7 +65,7 @@ export default function ViolationsPage() {
               />
             </label>
             <label className="block">
-              <span className="mb-1 block text-sm font-medium text-slate-700">Approved regions (comma-separated)</span>
+              <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-zinc-300">Approved regions (comma-separated)</span>
               <input
                 className="input"
                 value={ruleForm.approved_regions}
@@ -104,7 +108,7 @@ export default function ViolationsPage() {
               ))}
               {rules.length === 0 && (
                 <tr>
-                  <td colSpan={3} className="text-slate-400">
+                  <td colSpan={3} className="text-slate-400 dark:text-zinc-500">
                     No region rules defined yet.
                   </td>
                 </tr>
@@ -115,7 +119,7 @@ export default function ViolationsPage() {
       </section>
 
       <section className="space-y-3">
-        <h2 className="font-medium text-slate-800">Flagged accesses</h2>
+        <h2 className="font-medium text-slate-800 dark:text-zinc-200">Flagged accesses</h2>
         <div className="card overflow-x-auto">
           <table className="data-table">
             <thead>
@@ -133,7 +137,7 @@ export default function ViolationsPage() {
               ))}
               {violations.length === 0 && (
                 <tr>
-                  <td colSpan={2} className="text-slate-400">
+                  <td colSpan={2} className="text-slate-400 dark:text-zinc-500">
                     No violations flagged yet.
                   </td>
                 </tr>

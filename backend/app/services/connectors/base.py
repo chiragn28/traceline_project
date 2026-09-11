@@ -45,6 +45,12 @@ class PollResult:
     coverage_gap_start: datetime | None = None
 
 
+@dataclass
+class TableGrant:
+    grantee: str
+    privilege: str  # SELECT | INSERT | UPDATE | DELETE | ...
+
+
 class SourceConnector(ABC):
     @abstractmethod
     def test_connection(self) -> ConnectionCheckResult: ...
@@ -58,3 +64,10 @@ class SourceConnector(ABC):
 
     @abstractmethod
     def poll_events(self, checkpoint_log_file: str | None, checkpoint_byte_offset: int) -> PollResult: ...
+
+    @abstractmethod
+    def list_table_grants(self, schema_name: str, table_name: str) -> list[TableGrant]:
+        """Live GRANT introspection for one table -- who actually has a
+        privilege on it right now, independent of whether they've used it
+        recently. This is what lets an access review catch a dormant but
+        still-granted permission that observed-access-only would miss."""

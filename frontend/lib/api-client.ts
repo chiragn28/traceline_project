@@ -132,12 +132,22 @@ export interface Report {
   content_sha256: string;
 }
 
+export type Role = "admin" | "reviewer" | "viewer";
+
 export interface User {
   id: string;
   email: string;
-  role: string;
+  role: Role;
   can_review: boolean;
   created_at: string;
+}
+
+export interface Workspace {
+  id: string;
+  name: string;
+  access_log_retention_days: number;
+  erasure_policy_note: string | null;
+  enable_ip_geolocation: boolean;
 }
 
 export interface AccessReviewCycle {
@@ -150,11 +160,25 @@ export interface AccessReviewCycle {
 }
 
 export interface LineageGraph {
-  pipelines: { id: string; name: string }[];
-  tables: { id: string; schema_name: string; table_name: string; tags: string[] }[];
-  actors: { identifier: string; actor_type: string }[];
+  pipelines: { id: string; name: string; reads_count: number; writes_count: number }[];
+  tables: {
+    id: string;
+    schema_name: string;
+    table_name: string;
+    tags: string[];
+    access_count_30d: number;
+    distinct_actor_count: number;
+    last_accessed_at: string | null;
+  }[];
+  actors: {
+    identifier: string;
+    actor_type: string;
+    access_count_30d: number;
+    last_seen_at: string | null;
+    owner_email: string | null;
+  }[];
   pipeline_edges: { pipeline_id: string; table_id: string; direction: string }[];
-  access_edges: { actor_identifier: string; table_id: string }[];
+  access_edges: { actor_identifier: string; table_id: string; access_count_30d: number; last_accessed_at: string | null }[];
 }
 
 export interface AccessReviewItem {
@@ -168,9 +192,10 @@ export interface AccessReviewItem {
   actor_type: string;
   owner_user_id: string | null;
   owner_email: string | null;
+  access_basis: "observed" | "granted_only" | "both";
   access_count: number;
-  first_seen_at: string;
-  last_seen_at: string;
+  first_seen_at: string | null;
+  last_seen_at: string | null;
   decision: string;
   decision_reason: string | null;
   reviewed_by_user_id: string | null;

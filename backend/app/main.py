@@ -11,13 +11,17 @@ from app.api.routers import (
     reports,
     tables,
     users,
+    workspace,
 )
+from app.core.config import settings
 
 app = FastAPI(title="Traceline API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:3001"],
+    # Configurable via CORS_ALLOWED_ORIGINS (comma-separated) so a deployed
+    # frontend -- e.g. on Vercel -- isn't hardcoded to localhost.
+    allow_origins=settings.cors_allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -32,6 +36,7 @@ app.include_router(reports.router)
 app.include_router(access_reviews.router)
 app.include_router(users.router)
 app.include_router(lineage.router)
+app.include_router(workspace.router)
 
 
 @app.get("/health")

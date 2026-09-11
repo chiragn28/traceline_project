@@ -24,12 +24,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
-      {/*
-        Body deliberately has NO dark: variant. Dark mode is scoped to the
-        marketing site + login (see their own wrapper divs) and must not
-        leak into the dashboard app, which has its own separate, light-only
-        design system built earlier and isn't part of this change.
-      */}
       <body suppressHydrationWarning>{children}</body>
     </html>
   );

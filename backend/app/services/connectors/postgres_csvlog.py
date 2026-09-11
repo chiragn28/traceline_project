@@ -26,6 +26,7 @@ from app.services.connectors.base import (
     ParsedAccessEvent,
     PollResult,
     SourceConnector,
+    TableGrant,
 )
 
 CSVLOG_COLUMNS = 26
@@ -101,6 +102,35 @@ class PostgresCsvlogConnector(SourceConnector):
                     """
                 )
                 return [(row[0], row[1]) for row in cur.fetchall()]
+
+    def list_table_grants(self, schema_name: str, table_name: str) -> list[TableGrant]:
+        # information_schema.role_table_grants is SQL-standard but has a
+        # real, easy-to-miss visibility restriction: it only shows a grant
+        # if the CONNECTING role is the grantor or the grantee of that
+        # specific row. A read-only credential granted SELECT by the
+        # customer's admin cannot see grants the admin made to OTHER
+        # roles that way -- it would silently report "no grants" for
+        # everyone but itself. pg_class.relacl (exploded with the builtin
+        # aclexplode()) is visible to any role that can see the table's
+        # catalog entry at all, which is the actual customer-chosen
+        # visibility this connector should respect. Excludes PUBLIC (has
+        # no matching pg_roles row, so the join drops it) and the
+        # connector's own credential, which would just be noise in a review.
+        with self._connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT r.rolname, a.privilege_type
+                    FROM pg_class c
+                    JOIN pg_namespace n ON n.oid = c.relnamespace
+                    JOIN LATERAL aclexplode(c.relacl) AS a ON true
+                    JOIN pg_roles r ON r.oid = a.grantee
+                    WHERE n.nspname = %s AND c.relname = %s AND r.rolname != %s
+                    ORDER BY r.rolname, a.privilege_type
+                    """,
+                    (schema_name, table_name, self.username),
+                )
+                return [TableGrant(grantee=row[0], privilege=row[1]) for row in cur.fetchall()]
 
     def check_logging_coverage(self) -> LoggingCoverageResult:
         try:
@@ -280,21 +310,42 @@ class PostgresCsvlogConnector(SourceConnector):
         if not parsed:
             return None, None
 
+        def is_name_like(tok) -> bool:
+            return tok.ttype in (sqlparse.tokens.Name, None) or str(tok.ttype).startswith("Token.Literal")
+
         tokens = list(parsed[0].flatten())
         trigger_keywords = {"FROM", "JOIN", "INTO", "UPDATE", "TABLE"}
+        # Postgres syntax that can sit between the trigger keyword and the
+        # table name without being the name itself (e.g. "UPDATE ONLY t").
+        skippable_keywords = {"ONLY"}
+
         for i, tok in enumerate(tokens):
             # UPDATE (and DELETE/INSERT) are Keyword.DML, a *subtype* of
             # Keyword -- `in` checks the whole subtype tree, `is` only
             # matches the exact type and silently misses UPDATE's table.
-            if tok.ttype in sqlparse.tokens.Keyword and tok.value.upper() in trigger_keywords:
-                for nxt in tokens[i + 1 :]:
-                    if nxt.is_whitespace:
-                        continue
-                    if nxt.ttype in (sqlparse.tokens.Name, None) or str(nxt.ttype).startswith("Token.Literal"):
-                        identifier = nxt.value.strip('"')
-                        if "." in identifier:
-                            schema, table = identifier.split(".", 1)
-                            return schema, table
-                        return "public", identifier
-                    break
+            if tok.ttype not in sqlparse.tokens.Keyword or tok.value.upper() not in trigger_keywords:
+                continue
+
+            j = i + 1
+            while j < len(tokens) and (
+                tokens[j].is_whitespace
+                or (tokens[j].ttype in sqlparse.tokens.Keyword and tokens[j].value.upper() in skippable_keywords)
+            ):
+                j += 1
+            if j >= len(tokens) or not is_name_like(tokens[j]):
+                continue  # this occurrence didn't lead to a name; keep scanning
+
+            first = tokens[j].value.strip('"')
+            # A schema-qualified name ("public.customers", or quoted) is
+            # THREE tokens to sqlparse (Name, '.', Name), never one --
+            # missing this previously meant "public.customers" silently
+            # resolved to table "public" in schema "public".
+            if (
+                j + 2 < len(tokens)
+                and tokens[j + 1].ttype is sqlparse.tokens.Punctuation
+                and tokens[j + 1].value == "."
+                and is_name_like(tokens[j + 2])
+            ):
+                return first, tokens[j + 2].value.strip('"')
+            return "public", first
         return None, None

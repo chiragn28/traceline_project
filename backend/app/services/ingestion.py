@@ -19,6 +19,7 @@ from app.models.data_source import DataSource
 from app.models.ingestion import CoverageGap, IngestionCheckpoint
 from app.models.ip_region_map import IpRegionMap
 from app.models.table_asset import TableAsset
+from app.models.workspace import Workspace
 from app.services.connectors.base import PollResult
 from app.services.region import resolve_region
 from app.services.tables import build_connector
@@ -112,6 +113,7 @@ def run_ingestion_for_source(db: Session, workspace_id: UUID, data_source: DataS
         )
     }
     ip_map = list(db.scalars(select(IpRegionMap).where(IpRegionMap.workspace_id == workspace_id)))
+    workspace = db.get(Workspace, workspace_id)
 
     inserted = 0
     for event in poll_result.events:
@@ -123,7 +125,7 @@ def run_ingestion_for_source(db: Session, workspace_id: UUID, data_source: DataS
             continue
 
         table = tables_by_key.get((event.schema_name, event.table_name)) if event.table_name else None
-        region, confidence, region_source = resolve_region(event.source_ip, ip_map)
+        region, confidence, region_source = resolve_region(db, workspace, event.source_ip, ip_map)
 
         stmt = (
             pg_insert(AccessEvent)

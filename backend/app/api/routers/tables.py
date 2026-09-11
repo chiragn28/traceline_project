@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.api.deps import CurrentUser, get_current_user, get_db
+from app.api.deps import CurrentUser, get_current_user, get_db, require_role
 from app.models.classification import ClassificationTag
 from app.models.table_asset import TableAsset
 from app.schemas.table_asset import ClassificationTagCreate, ClassificationTagOut, TableAssetOut
@@ -47,7 +47,12 @@ def list_tables(
     return out
 
 
-@router.post("/{table_id}/classifications", response_model=ClassificationTagOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/{table_id}/classifications",
+    response_model=ClassificationTagOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_role("admin"))],
+)
 def add_classification(
     table_id: UUID,
     body: ClassificationTagCreate,

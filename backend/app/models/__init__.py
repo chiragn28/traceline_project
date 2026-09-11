@@ -4,6 +4,7 @@ from app.models.actor_ownership import ActorOwnership
 from app.models.classification import ClassificationTag
 from app.models.data_source import DataSource
 from app.models.ingestion import CoverageGap, IngestionCheckpoint
+from app.models.ip_geolocation_cache import IpGeolocationCache
 from app.models.ip_region_map import IpRegionMap
 from app.models.pipeline import Pipeline, PipelineTableEdge
 from app.models.region_rule import RegionRule
@@ -22,6 +23,7 @@ __all__ = [
     "DataSource",
     "CoverageGap",
     "IngestionCheckpoint",
+    "IpGeolocationCache",
     "IpRegionMap",
     "Pipeline",
     "PipelineTableEdge",

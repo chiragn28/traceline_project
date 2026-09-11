@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.api.deps import CurrentUser, get_current_user, get_db
+from app.api.deps import CurrentUser, get_current_user, get_db, require_role
 from app.core.crypto import encrypt_secret
 from app.models.data_source import DataSource
 from app.schemas.data_source import DataSourceCreate, DataSourceOut, TestConnectionResult
@@ -19,7 +19,9 @@ def list_data_sources(db: Session = Depends(get_db)) -> list[DataSource]:
     return list(db.scalars(select(DataSource)))
 
 
-@router.post("", response_model=DataSourceOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "", response_model=DataSourceOut, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_role("admin"))]
+)
 def create_data_source(
     body: DataSourceCreate,
     db: Session = Depends(get_db),
@@ -52,7 +54,11 @@ def create_data_source(
     return data_source
 
 
-@router.post("/{data_source_id}/test-connection", response_model=TestConnectionResult)
+@router.post(
+    "/{data_source_id}/test-connection",
+    response_model=TestConnectionResult,
+    dependencies=[Depends(require_role("admin", "reviewer"))],
+)
 def test_connection(data_source_id: UUID, db: Session = Depends(get_db)) -> TestConnectionResult:
     data_source = db.get(DataSource, data_source_id)
     if not data_source:

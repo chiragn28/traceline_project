@@ -1,3 +1,4 @@
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -25,6 +26,28 @@ class Settings(BaseSettings):
 
     # How often the ingestion worker polls each data source, in seconds.
     ingestion_poll_interval_seconds: int = 15
+
+    # Comma-separated in the environment (CORS_ALLOWED_ORIGINS=https://a,https://b).
+    # Defaults cover local dev; a deployed frontend (e.g. Vercel) must be
+    # added explicitly, never wildcarded, since credentials are allowed.
+    cors_allowed_origins: list[str] = ["http://localhost:3000", "http://localhost:3001"]
+
+    # Local dev: frontend and backend are both http://localhost, so a plain
+    # Lax, non-Secure cookie works. A deployed split (frontend on Vercel,
+    # backend on Railway) puts them on different origins entirely, and a
+    # cross-site fetch will not send/accept a Lax cookie no matter what
+    # `credentials: "include"` says on the frontend -- it needs
+    # SameSite=None, which browsers additionally require Secure (HTTPS) for.
+    # Set COOKIE_SECURE=true and COOKIE_SAMESITE=none in that deployment.
+    cookie_secure: bool = False
+    cookie_samesite: str = "lax"
+
+    @field_validator("cors_allowed_origins", mode="before")
+    @classmethod
+    def _split_origins(cls, value):
+        if isinstance(value, str):
+            return [origin.strip() for origin in value.split(",") if origin.strip()]
+        return value
 
 
 settings = Settings()
