@@ -1,4 +1,3 @@
-from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -30,7 +29,18 @@ class Settings(BaseSettings):
     # Comma-separated in the environment (CORS_ALLOWED_ORIGINS=https://a,https://b).
     # Defaults cover local dev; a deployed frontend (e.g. Vercel) must be
     # added explicitly, never wildcarded, since credentials are allowed.
-    cors_allowed_origins: list[str] = ["http://localhost:3000", "http://localhost:3001"]
+    #
+    # Kept as a raw str field, not list[str]: pydantic-settings tries to
+    # JSON-decode any complex-typed field's env value *before* a "before"
+    # validator ever runs, so a real (non-JSON) comma-separated env value
+    # like "https://a,https://b" crashed on startup -- only worked locally
+    # because the Python-list default was never overridden by an env var.
+    # Parse via the cors_allowed_origins_list property instead.
+    cors_allowed_origins: str = "http://localhost:3000,http://localhost:3001"
+
+    @property
+    def cors_allowed_origins_list(self) -> list[str]:
+        return [origin.strip() for origin in self.cors_allowed_origins.split(",") if origin.strip()]
 
     # Local dev: frontend and backend are both http://localhost, so a plain
     # Lax, non-Secure cookie works. A deployed split (frontend on Vercel,
@@ -41,13 +51,6 @@ class Settings(BaseSettings):
     # Set COOKIE_SECURE=true and COOKIE_SAMESITE=none in that deployment.
     cookie_secure: bool = False
     cookie_samesite: str = "lax"
-
-    @field_validator("cors_allowed_origins", mode="before")
-    @classmethod
-    def _split_origins(cls, value):
-        if isinstance(value, str):
-            return [origin.strip() for origin in value.split(",") if origin.strip()]
-        return value
 
 
 settings = Settings()

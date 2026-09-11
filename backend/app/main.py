@@ -21,7 +21,7 @@ app.add_middleware(
     CORSMiddleware,
     # Configurable via CORS_ALLOWED_ORIGINS (comma-separated) so a deployed
     # frontend -- e.g. on Vercel -- isn't hardcoded to localhost.
-    allow_origins=settings.cors_allowed_origins,
+    allow_origins=settings.cors_allowed_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
