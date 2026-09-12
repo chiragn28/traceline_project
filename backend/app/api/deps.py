@@ -29,11 +29,19 @@ def get_current_user(request: Request) -> CurrentUser:
         payload = decode_access_token(token)
     except jwt.PyJWTError:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid or expired session")
-    return CurrentUser(
-        user_id=UUID(payload["sub"]),
-        workspace_id=UUID(payload["workspace_id"]),
-        email=payload.get("email", ""),
-    )
+
+    # A token can be validly signed and still not carry the claims this app
+    # expects -- an older token format, or one minted by another service
+    # that happens to share the secret. Missing/garbled claims are an
+    # authentication failure, not an unhandled KeyError/ValueError that
+    # surfaces as a 500 and leaks a stack trace.
+    try:
+        user_id = UUID(payload["sub"])
+        workspace_id = UUID(payload["workspace_id"])
+    except (KeyError, ValueError, TypeError):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid or expired session")
+
+    return CurrentUser(user_id=user_id, workspace_id=workspace_id, email=payload.get("email", ""))
 
 
 def get_db(current_user: CurrentUser = Depends(get_current_user)) -> Generator[Session, None, None]:
@@ -54,6 +62,15 @@ def get_current_db_user(current_user: CurrentUser = Depends(get_current_user), d
     user = db.get(User, current_user.user_id)
     if user is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Session user not found")
+
+    # Defence in depth. The session is already RLS-scoped to the token's
+    # workspace_id, so a user row from another workspace should be
+    # invisible here rather than mismatched -- this asserts that invariant
+    # instead of assuming it. If a user is ever moved between workspaces,
+    # their existing tokens stop working immediately, which is the safe
+    # direction to fail.
+    if user.workspace_id != current_user.workspace_id:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Session no longer valid for this workspace")
     return user
 
 

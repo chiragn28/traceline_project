@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String
+from sqlalchemy import DateTime, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -41,4 +41,20 @@ class Report(Base):
 
     generated_at: Mapped[datetime] = created_at_col()
     content_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
-    file_path: Mapped[str] = mapped_column(String(1000), nullable=False)
+
+    # The report's exact bytes, stored in the database rather than on the
+    # local filesystem. Evidence has to outlive the container that produced
+    # it: on any ephemeral-filesystem host (Railway, Fly, Heroku, a plain
+    # k8s pod) a redeploy wiped the file while this row survived, so every
+    # historical report 500'd on download -- the audit artifact the whole
+    # product exists to produce was the one thing that didn't persist.
+    # Storing it here also makes the row and its hash atomically consistent:
+    # they commit or roll back together, which a separate file write cannot
+    # guarantee. Reports are small CSV text; a blob store is the right
+    # answer only once they aren't.
+    content: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Legacy: where the file was written before content moved into the
+    # database. Kept nullable so pre-existing rows still render in the list,
+    # and so a deployment that still has its original disk can be migrated.
+    file_path: Mapped[str | None] = mapped_column(String(1000), nullable=True)

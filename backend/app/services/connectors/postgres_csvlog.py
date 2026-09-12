@@ -13,6 +13,7 @@ connector would use a proper streaming RFC4180 parser or pgaudit instead.
 import csv
 import glob
 import io
+import logging
 import os
 import re
 from datetime import datetime, timezone
@@ -29,11 +30,23 @@ from app.services.connectors.base import (
     TableGrant,
 )
 
+logger = logging.getLogger("traceline.connector.postgres_csvlog")
+
 CSVLOG_COLUMNS = 26
 COL_LOG_TIME = 0
 COL_USER_NAME = 1
 COL_CONNECTION_FROM = 4
 COL_MESSAGE = 13
+
+# Ceiling on how many new log bytes a single poll pulls into memory.
+# Without it, the first poll of a source with a large existing log
+# directory (or any source that outran the poll interval) read every new
+# byte of every file at once and built one Python list of every parsed
+# event -- an easy way to OOM the worker on a small container and take
+# ingestion down for every other workspace with it. Anything beyond the cap
+# isn't lost: the checkpoint advances over what was read, and the next poll
+# resumes exactly where this one stopped.
+MAX_POLL_BYTES = 8 * 1024 * 1024
 
 _STATEMENT_RE = re.compile(r"^\s*(?:statement|execute [^:]+):\s*(.*)$", re.IGNORECASE | re.DOTALL)
 
@@ -189,18 +202,27 @@ class PostgresCsvlogConnector(SourceConnector):
         events: list[ParsedAccessEvent] = []
         current_file = target_file
         current_offset = target_offset
+        budget = MAX_POLL_BYTES
 
         file_index = files.index(current_file)
         for f in files[file_index:]:
+            if budget <= 0:
+                # Out of budget for this poll. Stop cleanly with the
+                # checkpoint at the last fully-parsed byte; the next poll
+                # picks up from here. See MAX_POLL_BYTES.
+                break
             start_offset = current_offset if f == current_file else 0
-            new_events, consumed_to = self._parse_file_from(f, start_offset)
+            new_events, consumed_to = self._parse_file_from(f, start_offset, budget)
             events.extend(new_events)
+            budget -= max(consumed_to - start_offset, 0)
             current_file = f
             current_offset = consumed_to
 
         return PollResult(events=events, new_log_file=current_file, new_byte_offset=current_offset)
 
-    def _parse_file_from(self, path: str, byte_offset: int) -> tuple[list[ParsedAccessEvent], int]:
+    def _parse_file_from(
+        self, path: str, byte_offset: int, max_bytes: int = MAX_POLL_BYTES
+    ) -> tuple[list[ParsedAccessEvent], int]:
         """Reads new bytes since `byte_offset` and parses complete CSV
         records out of them. A record is "complete" once its running quote
         count is even (no quoted field, which is how Postgres escapes
@@ -212,7 +234,7 @@ class PostgresCsvlogConnector(SourceConnector):
         """
         with open(path, "rb") as f:
             f.seek(byte_offset)
-            new_bytes = f.read()
+            new_bytes = f.read(max(max_bytes, 0))
 
         if not new_bytes:
             return [], byte_offset
@@ -245,6 +267,22 @@ class PostgresCsvlogConnector(SourceConnector):
                 events.append(event)
             buffer, buffer_byte_len = "", 0
 
+        if consumed_byte_len == 0 and len(new_bytes) >= max_bytes > 0:
+            # Read a full budget's worth and still couldn't complete a
+            # single record, which means one record is larger than the cap.
+            # Without this, every subsequent poll would re-read the same
+            # bytes and never advance -- ingestion for this source would
+            # stall silently and forever. Skip the oversized record and
+            # keep going; one dropped (and loudly logged) event is better
+            # than a permanently wedged pipeline.
+            logger.warning(
+                "csvlog record at %s offset %d exceeds the %d-byte per-poll cap; skipping it to avoid stalling ingestion",
+                path,
+                byte_offset,
+                max_bytes,
+            )
+            return events, byte_offset + len(new_bytes)
+
         return events, byte_offset + consumed_byte_len
 
     def _row_to_event(self, row: list[str], path: str, offset_marker: int) -> ParsedAccessEvent | None:
@@ -253,11 +291,22 @@ class PostgresCsvlogConnector(SourceConnector):
         if not match:
             return None  # not a statement-execution row (e.g. a connection/auth log line)
 
+        occurred_at = self._parse_log_time(row[COL_LOG_TIME])
+        if occurred_at is None:
+            # Unparseable or non-UTC timestamp -- see _parse_log_time. An
+            # access event with a timestamp we can't stand behind has no
+            # audit value, so it's dropped rather than recorded wrongly.
+            logger.warning(
+                "skipping csvlog row with unusable log_time %r "
+                "(is this source's log_timezone set to something other than UTC?)",
+                row[COL_LOG_TIME],
+            )
+            return None
+
         sql_text = match.group(1)
         query_type = self._classify_query_type(sql_text)
         schema_name, table_name = self._extract_table(sql_text)
 
-        occurred_at = self._parse_log_time(row[COL_LOG_TIME])
         source_ip = (row[COL_CONNECTION_FROM] or "").rsplit(":", 1)[0] or None
         actor = row[COL_USER_NAME] or "unknown"
 
@@ -273,10 +322,40 @@ class PostgresCsvlogConnector(SourceConnector):
         )
 
     @staticmethod
-    def _parse_log_time(raw: str) -> datetime:
-        # Postgres csvlog log_time is like "2026-09-09 10:15:23.123 UTC"
-        dt = datetime.strptime(raw.split(" UTC")[0], "%Y-%m-%d %H:%M:%S.%f")
-        return dt.replace(tzinfo=timezone.utc)
+    def _parse_log_time(raw: str) -> datetime | None:
+        """Parse a csvlog log_time, returning None if it can't be trusted.
+
+        Postgres formats this as "2026-09-09 10:15:23.123 UTC", but the
+        trailing zone follows the source's own `log_timezone` setting,
+        which the customer controls and is frequently *not* UTC. The
+        previous implementation split on the literal " UTC" and then
+        required microseconds, so a source logging in Asia/Dubai (or with
+        whole-second timestamps) raised ValueError on the first row and
+        took down ingestion for that entire data source -- one config
+        difference on the customer's side, and Traceline silently stopped
+        collecting anything.
+
+        Rather than guess a zone we can't verify, non-UTC rows are skipped
+        and reported: a wrong timestamp on an audit record is worse than a
+        missing one, and the coverage gap is visible either way.
+        """
+        raw = (raw or "").strip()
+        if not raw:
+            return None
+
+        parts = raw.rsplit(" ", 1)
+        if len(parts) != 2:
+            return None
+        stamp, zone = parts
+        if zone.upper() != "UTC":
+            return None
+
+        for fmt in ("%Y-%m-%d %H:%M:%S.%f", "%Y-%m-%d %H:%M:%S"):
+            try:
+                return datetime.strptime(stamp, fmt).replace(tzinfo=timezone.utc)
+            except ValueError:
+                continue
+        return None
 
     @staticmethod
     def _classify_query_type(sql_text: str) -> str:

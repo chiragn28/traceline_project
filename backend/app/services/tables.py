@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 from uuid import UUID
 
+from cryptography.fernet import InvalidToken
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -10,13 +11,33 @@ from app.services.connectors.postgres_csvlog import PostgresCsvlogConnector
 from app.core.crypto import decrypt_secret
 
 
+class CredentialDecryptionError(RuntimeError):
+    """The stored credential can't be decrypted with the current key.
+
+    Almost always means CREDENTIALS_ENCRYPTION_KEY was rotated or restored
+    from a different environment without re-encrypting existing rows. It's
+    unrecoverable without the old key, so it needs to surface as a clear,
+    actionable message -- not the opaque 500 that an InvalidToken escaping
+    from here used to produce on every connection test and every worker
+    poll.
+    """
+
+
 def build_connector(data_source: DataSource) -> PostgresCsvlogConnector:
+    try:
+        password = decrypt_secret(data_source.encrypted_password)
+    except InvalidToken as exc:
+        raise CredentialDecryptionError(
+            f"Stored credential for data source {data_source.id} cannot be decrypted with the current "
+            "CREDENTIALS_ENCRYPTION_KEY. Re-enter the credential, or restore the key it was encrypted with."
+        ) from exc
+
     return PostgresCsvlogConnector(
         host=data_source.host,
         port=data_source.port,
         dbname=data_source.dbname,
         username=data_source.username,
-        password=decrypt_secret(data_source.encrypted_password),
+        password=password,
         log_directory=data_source.log_directory,
     )
 

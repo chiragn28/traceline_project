@@ -1,7 +1,8 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, get_current_user, get_db, require_role
@@ -38,7 +39,17 @@ def create_user(
         can_review=body.can_review,
     )
     db.add(user)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        # Email is globally unique (uq_user_email) because login resolves a
+        # workspace from an email before any tenant context exists. Without
+        # this branch the constraint violation surfaced as a 500; the
+        # message stays deliberately non-committal about *which* workspace
+        # holds the address, since that would let any admin probe for
+        # accounts in workspaces they can't see.
+        db.rollback()
+        raise HTTPException(status.HTTP_409_CONFLICT, "That email address is already registered")
     db.refresh(user)
     return user
 
@@ -48,6 +59,22 @@ def update_user(user_id: UUID, body: UserUpdate, db: Session = Depends(get_db)) 
     user = db.get(User, user_id)
     if not user:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+
+    # Don't let a workspace demote its way out of having any admin. There is
+    # no self-serve signup and no support console to recover from it, so the
+    # workspace would be permanently stuck: unable to connect a data source,
+    # tag a table, or promote anyone back. The session is RLS-scoped, so
+    # this count only ever sees the caller's own workspace.
+    if user.role == "admin" and body.role != "admin":
+        remaining_admins = db.scalar(
+            select(func.count()).select_from(User).where(User.role == "admin", User.id != user.id)
+        )
+        if not remaining_admins:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                "This is the only admin in the workspace. Promote another user to admin before changing this one.",
+            )
+
     user.role = body.role
     user.can_review = body.can_review
     db.commit()

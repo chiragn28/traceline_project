@@ -49,7 +49,7 @@ export default function ReportsPage() {
 
   function download(id: string) {
     const base = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
-    window.open(`${base}/reports/${id}/download`, "_blank");
+    window.open(`${base}/reports/${id}/download`, "_blank", "noopener,noreferrer");
   }
 
   return (

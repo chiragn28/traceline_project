@@ -441,7 +441,7 @@ def _ensure_review_cycles_and_reports(db, workspace: Workspace, admin_user: User
         item.reviewed_at = q2_created + timedelta(days=3)
     db.commit()
 
-    q2_review_file_path, q2_review_sha256 = generate_access_review_report_csv(db, workspace.id, q2.cycle_id)
+    q2_review_content, q2_review_sha256 = generate_access_review_report_csv(db, workspace.id, q2.cycle_id)
     db.add(
         Report(
             workspace_id=workspace.id,
@@ -451,7 +451,7 @@ def _ensure_review_cycles_and_reports(db, workspace: Workspace, admin_user: User
             range_start=q2_created,
             range_end=q2_created,
             content_sha256=q2_review_sha256,
-            file_path=q2_review_file_path,
+            content=q2_review_content,
         )
     )
     db.commit()
@@ -499,7 +499,7 @@ def _ensure_review_cycles_and_reports(db, workspace: Workspace, admin_user: User
 
     range_end = datetime.now(timezone.utc)
     range_start = range_end - timedelta(days=30)
-    file_path, content_sha256 = generate_report_csv(db, workspace.id, range_start, range_end)
+    content, content_sha256 = generate_report_csv(db, workspace.id, range_start, range_end)
     db.add(
         Report(
             workspace_id=workspace.id,
@@ -508,7 +508,7 @@ def _ensure_review_cycles_and_reports(db, workspace: Workspace, admin_user: User
             range_start=range_start,
             range_end=range_end,
             content_sha256=content_sha256,
-            file_path=file_path,
+            content=content,
         )
     )
     db.commit()

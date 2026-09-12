@@ -116,6 +116,9 @@ def run_ingestion_for_source(db: Session, workspace_id: UUID, data_source: DataS
     workspace = db.get(Workspace, workspace_id)
 
     inserted = 0
+    # One memo per batch so a repeated source IP costs a single geolocation
+    # lookup, not one per event -- see resolve_region.
+    region_run_cache: dict[str, tuple[str | None, str, str | None]] = {}
     for event in poll_result.events:
         # Never audit Traceline's own read-only monitoring connection --
         # that credential's queries are metadata lookups, not customer
@@ -125,7 +128,9 @@ def run_ingestion_for_source(db: Session, workspace_id: UUID, data_source: DataS
             continue
 
         table = tables_by_key.get((event.schema_name, event.table_name)) if event.table_name else None
-        region, confidence, region_source = resolve_region(db, workspace, event.source_ip, ip_map)
+        region, confidence, region_source = resolve_region(
+            db, workspace, event.source_ip, ip_map, run_cache=region_run_cache
+        )
 
         stmt = (
             pg_insert(AccessEvent)

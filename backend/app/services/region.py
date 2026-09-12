@@ -34,10 +34,37 @@ def resolve_region(
     workspace: Workspace,
     source_ip: str | None,
     ip_map: list[IpRegionMap],
+    run_cache: dict[str, tuple[str | None, str, str | None]] | None = None,
 ) -> tuple[str | None, str, str | None]:
-    """Returns (region, confidence, source)."""
+    """Returns (region, confidence, source).
+
+    `run_cache` is an optional per-batch memo the caller owns. The
+    persistent cache below lives in the database and is only visible once
+    written, and sessions here run with autoflush off, so within a single
+    ingestion batch the same new IP would otherwise be looked up once per
+    event: a batch of 500 events from one new address meant 500 identical
+    outbound HTTP calls (well past ip-api.com's 45/minute limit, so most
+    would fail) and 500 duplicate cache rows queued for insert. Passing a
+    dict collapses that to one lookup per distinct address per batch.
+    """
     if not source_ip:
         return None, "unknown", None
+
+    if run_cache is not None and source_ip in run_cache:
+        return run_cache[source_ip]
+
+    result = _resolve_region_uncached(db, workspace, source_ip, ip_map)
+    if run_cache is not None:
+        run_cache[source_ip] = result
+    return result
+
+
+def _resolve_region_uncached(
+    db: Session,
+    workspace: Workspace,
+    source_ip: str,
+    ip_map: list[IpRegionMap],
+) -> tuple[str | None, str, str | None]:
 
     try:
         addr = ipaddress.ip_address(source_ip)

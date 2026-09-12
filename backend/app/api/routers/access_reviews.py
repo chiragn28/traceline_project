@@ -137,7 +137,7 @@ def generate_cycle_report(
     if not cycle:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Review cycle not found")
 
-    file_path, content_sha256 = generate_access_review_report_csv(db, current_user.workspace_id, cycle_id)
+    content, content_sha256 = generate_access_review_report_csv(db, current_user.workspace_id, cycle_id)
     report = Report(
         workspace_id=current_user.workspace_id,
         generated_by_user_id=current_user.user_id,
@@ -146,7 +146,7 @@ def generate_cycle_report(
         range_start=cycle.created_at,
         range_end=cycle.created_at,
         content_sha256=content_sha256,
-        file_path=file_path,
+        content=content,
     )
     db.add(report)
     db.commit()
@@ -165,6 +165,17 @@ def set_actor_ownership(
     db: Session = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user),
 ) -> ActorOwnershipSet:
+    # owner_user_id is a foreign key, and Postgres validates foreign keys
+    # with RLS bypassed -- so without this check an admin could attach an
+    # owner UUID belonging to another workspace. It would render as blank
+    # in the UI (the lookup is RLS-scoped), but the insert succeeding or
+    # failing on the FK would confirm whether that UUID exists elsewhere:
+    # a cross-tenant existence oracle. Resolve the user through the scoped
+    # session first, so only this workspace's users are addressable.
+    owner = db.get(User, body.owner_user_id)
+    if owner is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Owner user not found in this workspace")
+
     existing = db.scalar(
         select(ActorOwnership).where(
             ActorOwnership.workspace_id == current_user.workspace_id,

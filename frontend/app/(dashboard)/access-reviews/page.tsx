@@ -77,7 +77,7 @@ export default function AccessReviewsPage() {
       .post<{ id: string }>(`/access-reviews/${selectedCycle}/report`)
       .then((report) => {
         const base = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
-        window.open(`${base}/reports/${report.id}/download`, "_blank");
+        window.open(`${base}/reports/${report.id}/download`, "_blank", "noopener,noreferrer");
       })
       .catch((err) => alert(err instanceof ApiError ? err.message : "Failed to generate evidence report"));
   }

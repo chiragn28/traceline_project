@@ -73,15 +73,21 @@ def create_ip_region_map_entry(
 @router.get("/violations", response_model=list[ViolationOut])
 def list_violations(
     data_source_id: UUID | None = Query(default=None),
+    limit: int = Query(default=200, ge=1, le=1000),
     db: Session = Depends(get_db),
 ) -> list[Violation]:
-    stmt = select(Violation).order_by(Violation.detected_at.desc())
-    violations = list(db.scalars(stmt))
+    # Previously this loaded every violation in the workspace and, when
+    # filtering by source, every access_event id as well -- then filtered in
+    # Python. On a workspace with real history that is unbounded memory on
+    # an endpoint any viewer can call. The filter is now a subquery the
+    # database resolves, and the result set is capped like /access-events.
+    stmt = select(Violation).order_by(Violation.detected_at.desc()).limit(limit)
     if data_source_id:
         from app.models.access_event import AccessEvent
 
-        event_ids = set(
-            db.scalars(select(AccessEvent.id).where(AccessEvent.data_source_id == data_source_id))
+        stmt = stmt.where(
+            Violation.access_event_id.in_(
+                select(AccessEvent.id).where(AccessEvent.data_source_id == data_source_id)
+            )
         )
-        violations = [v for v in violations if v.access_event_id in event_ids]
-    return violations
+    return list(db.scalars(stmt))

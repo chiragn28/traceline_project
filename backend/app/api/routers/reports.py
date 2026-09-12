@@ -26,14 +26,17 @@ def create_report(
     db: Session = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user),
 ) -> Report:
-    file_path, content_sha256 = generate_report_csv(db, current_user.workspace_id, body.range_start, body.range_end)
+    if body.range_end < body.range_start:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "range_end must not be earlier than range_start")
+
+    content, content_sha256 = generate_report_csv(db, current_user.workspace_id, body.range_start, body.range_end)
     report = Report(
         workspace_id=current_user.workspace_id,
         generated_by_user_id=current_user.user_id,
         range_start=body.range_start,
         range_end=body.range_end,
         content_sha256=content_sha256,
-        file_path=file_path,
+        content=content,
     )
     db.add(report)
     db.commit()
@@ -47,19 +50,29 @@ def download_report(report_id: UUID, db: Session = Depends(get_db)) -> Response:
     if not report:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Report not found")
 
-    if not verify_report_integrity(report.file_path, report.content_sha256):
-        # Tamper-evident by design: refuse to serve a report whose stored
-        # hash no longer matches its file contents, rather than silently
-        # handing out a possibly-altered "audit" document.
-        raise HTTPException(status.HTTP_409_CONFLICT, "Report integrity check failed -- file may have been altered")
+    if report.content is None:
+        # Generated before report bytes moved into the database (migration
+        # 0004), when they lived on a container-local disk that a redeploy
+        # could wipe. The row survived, the evidence didn't. Say so plainly
+        # -- 410 Gone, not a 500 that reads like a transient glitch -- so
+        # the operator knows to regenerate rather than retry.
+        raise HTTPException(
+            status.HTTP_410_GONE,
+            "This report predates durable storage and its contents are no longer available. Generate a new report.",
+        )
 
-    with open(report.file_path, "rb") as f:
-        content = f.read()
+    if not verify_report_integrity(report.content, report.content_sha256):
+        # Tamper-evident by design: refuse to serve a report whose stored
+        # hash no longer matches its contents, rather than silently handing
+        # out a possibly-altered "audit" document.
+        raise HTTPException(status.HTTP_409_CONFLICT, "Report integrity check failed -- contents may have been altered")
 
     return Response(
-        content=content,
+        content=report.content.encode("utf-8"),
         media_type="text/csv",
         headers={
+            # Filename is a server-generated UUID, so it cannot carry a
+            # quote or newline that would break out of the header.
             "Content-Disposition": f'attachment; filename="traceline_report_{report_id}.csv"',
             "X-Content-SHA256": report.content_sha256,
         },
