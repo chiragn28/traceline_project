@@ -152,7 +152,14 @@ export default function LineageGraph({ graph }: { graph: LineageGraphData }) {
 
       <div
         ref={containerRef}
-        className={`relative h-[480px] w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-50 dark:border-zinc-800 dark:bg-zinc-950 ${dragging ? "cursor-grabbing" : "cursor-grab"}`}
+        // Same dot-grid texture as the marketing site (see app/page.tsx),
+        // applied as this element's own background-image rather than a
+        // separate fixed overlay -- it paints beneath the SVG automatically
+        // with no z-index/stacking-context concerns, and since it's the
+        // container's background rather than something inside the panned/
+        // zoomed <svg>, it stays put like paper under a diagram instead of
+        // scaling or drifting with the graph.
+        className={`relative h-[480px] w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-50 bg-[radial-gradient(rgba(15,23,42,0.09)_1px,transparent_1px)] bg-[size:22px_22px] dark:border-zinc-800 dark:bg-zinc-950 dark:bg-[radial-gradient(rgba(255,255,255,0.09)_1px,transparent_1px)] ${dragging ? "cursor-grabbing" : "cursor-grab"}`}
         onWheel={onWheel}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
