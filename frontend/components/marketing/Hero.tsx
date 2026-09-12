@@ -8,14 +8,10 @@ export default function Hero() {
   const reduce = useReducedMotion();
   return (
     <section className="relative overflow-hidden pt-20 pb-24 md:pt-24 md:pb-32">
-      {/* Bold but honest background treatment: a faint grid to ground the
-          diagram motif that recurs in the product, plus a single soft
-          emerald glow, never AI-purple, never full-bleed saturated. Fixed
-          layer, no scroll-tied repaint (skill Section 6.E). */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(to_right,rgba(15,23,42,0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(15,23,42,0.05)_1px,transparent_1px)] bg-[size:64px_64px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,black,transparent)] dark:bg-[linear-gradient(to_right,rgba(255,255,255,0.07)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.07)_1px,transparent_1px)]"
-      />
+      {/* The grid itself is now a fixed, site-wide layer (see app/page.tsx)
+          so it reads as one consistent ground instead of a hero-only
+          flourish. Hero keeps its own accent: a single soft emerald glow,
+          never AI-purple, never full-bleed saturated. */}
       <div
         aria-hidden
         className="pointer-events-none absolute left-1/2 top-[-180px] -z-10 h-[520px] w-[820px] -translate-x-1/2 rounded-full bg-emerald-200/40 blur-[110px] dark:bg-emerald-500/10"
