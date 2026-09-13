@@ -1,4 +1,7 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+// Always same-origin, proxied to the real backend by the rewrite in
+// next.config.js -- see the comment there for why calling the backend's
+// own domain directly broke login on mobile Safari.
+const API_BASE_URL = "/api";
 
 export class ApiError extends Error {
   status: number;

@@ -48,8 +48,10 @@ export default function ReportsPage() {
   }
 
   function download(id: string) {
-    const base = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
-    window.open(`${base}/reports/${id}/download`, "_blank", "noopener,noreferrer");
+    // Same-origin path (see lib/api-client.ts) -- the direct cross-site
+    // Railway URL relied on the auth cookie being sent to a third-party
+    // domain, which mobile Safari blocks by default.
+    window.open(`/api/reports/${id}/download`, "_blank", "noopener,noreferrer");
   }
 
   return (
