@@ -45,7 +45,7 @@ export default function ViolationsPage() {
       </div>
 
       <section className="space-y-3">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-medium text-slate-800 dark:text-zinc-200">Region rules</h2>
           {canManageRules && (
             <button className="btn-secondary" onClick={() => setShowRuleForm((v) => !v)}>

@@ -56,7 +56,7 @@ export default function DataSourcesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold dark:text-zinc-100">Data Sources</h1>
           <p className="text-sm text-slate-500 dark:text-zinc-400">
@@ -153,9 +153,9 @@ export default function DataSourcesPage() {
       <div className="grid gap-4">
         {sources.map((s) => (
           <div key={s.id} className="card">
-            <div className="flex items-start justify-between">
-              <div>
-                <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
                   <h2 className="font-medium text-slate-900 dark:text-zinc-100">{s.name}</h2>
                   {!s.is_production && (
                     <span className="badge bg-slate-100 text-slate-600 dark:bg-zinc-800 dark:text-zinc-300">non-production</span>
@@ -170,7 +170,7 @@ export default function DataSourcesPage() {
                     <span className="badge bg-slate-100 text-slate-500 dark:bg-zinc-800 dark:text-zinc-400">unverified</span>
                   )}
                 </div>
-                <p className="mt-1 text-sm text-slate-500 dark:text-zinc-400">
+                <p className="mt-1 break-all text-sm text-slate-500 dark:text-zinc-400">
                   {s.username}@{s.host}:{s.port}/{s.dbname}
                 </p>
                 {s.read_only_warning && (

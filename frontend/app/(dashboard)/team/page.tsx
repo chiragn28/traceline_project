@@ -80,7 +80,7 @@ export default function TeamPage() {
       </div>
 
       <section className="space-y-3">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-medium text-slate-800 dark:text-zinc-200">Team members</h2>
           {isAdmin && (
             <button className="btn-secondary" onClick={() => setShowAddUser((v) => !v)}>
@@ -258,7 +258,7 @@ export default function TeamPage() {
       <section className="space-y-3">
         <h2 className="font-medium text-slate-800 dark:text-zinc-200">Workspace settings</h2>
         {workspace && (
-          <div className="card flex items-start justify-between gap-6">
+          <div className="card flex flex-col items-start gap-4 sm:flex-row sm:justify-between sm:gap-6">
             <div>
               <p className="text-sm font-medium text-slate-800 dark:text-zinc-200">IP geolocation for region confidence</p>
               <p className="mt-1 max-w-[60ch] text-sm text-slate-500 dark:text-zinc-400">
