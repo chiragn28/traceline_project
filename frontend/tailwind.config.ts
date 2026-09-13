@@ -7,7 +7,7 @@ const config: Config = {
     extend: {
       colors: {
         ink: "#0f172a",
-        paper: "#f8fafc",
+        paper: "#eaeef4",
       },
     },
   },

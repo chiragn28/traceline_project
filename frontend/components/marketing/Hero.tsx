@@ -3,6 +3,7 @@
 import { motion, useReducedMotion } from "motion/react";
 import AccessGraph from "./AccessGraph";
 import MagneticButton from "./MagneticButton";
+import TiltCard from "./TiltCard";
 
 export default function Hero() {
   const reduce = useReducedMotion();
@@ -14,7 +15,7 @@ export default function Hero() {
           never AI-purple, never full-bleed saturated. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute left-1/2 top-[-180px] -z-10 h-[520px] w-[820px] -translate-x-1/2 rounded-full bg-emerald-200/40 blur-[110px] dark:bg-emerald-500/10"
+        className="pointer-events-none absolute left-1/2 top-[-180px] -z-10 h-[560px] w-[880px] -translate-x-1/2 rounded-full bg-emerald-200/55 blur-[110px] dark:bg-emerald-500/[0.14]"
       />
 
       <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-14 px-6 md:grid-cols-[1.05fr_0.95fr] md:gap-10">
@@ -39,9 +40,10 @@ export default function Hero() {
           initial={reduce ? false : { opacity: 0, scale: 0.94, rotate: -1.2 }}
           animate={{ opacity: 1, scale: 1, rotate: 0 }}
           transition={{ duration: 0.75, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
-          className="rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_30px_60px_-25px_rgba(15,23,42,0.25)] dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-[0_1px_0_rgba(255,255,255,0.04)_inset,0_30px_60px_-25px_rgba(0,0,0,0.6)]"
         >
-          <AccessGraph />
+          <TiltCard className="rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_30px_60px_-25px_rgba(15,23,42,0.25)] dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-[0_1px_0_rgba(255,255,255,0.04)_inset,0_30px_60px_-25px_rgba(0,0,0,0.6)]">
+            <AccessGraph />
+          </TiltCard>
         </motion.div>
       </div>
     </section>

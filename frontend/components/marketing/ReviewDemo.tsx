@@ -1,31 +1,39 @@
 "use client";
 
 import { useState } from "react";
+import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { CheckCircle, XCircle, LockSimple } from "@phosphor-icons/react";
+import TiltCard from "./TiltCard";
 
 type Decision = "approved" | "revoked" | null;
 
 export default function ReviewDemo() {
   const [decision, setDecision] = useState<Decision>(null);
+  const reduce = useReducedMotion();
 
   return (
-    <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+    <TiltCard maxTilt={6} className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
       <div className="mb-4 flex min-h-[24px] items-center justify-between">
         <span className="font-mono text-sm font-semibold text-ink dark:text-zinc-50">
           billing.invoices
         </span>
-        {decision && (
-          <span
-            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-              decision === "approved"
-                ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400"
-                : "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400"
-            }`}
-          >
-            <LockSimple size={11} weight="bold" />
-            {decision === "approved" ? "Approved" : "Revoked"}
-          </span>
-        )}
+        <AnimatePresence>
+          {decision && (
+            <motion.span
+              initial={reduce ? false : { opacity: 0, scale: 0.7 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                decision === "approved"
+                  ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400"
+                  : "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400"
+              }`}
+            >
+              <LockSimple size={11} weight="bold" />
+              {decision === "approved" ? "Approved" : "Revoked"}
+            </motion.span>
+          )}
+        </AnimatePresence>
       </div>
 
       <dl className="divide-y divide-slate-100 text-[13.5px] dark:divide-zinc-800">
@@ -66,6 +74,6 @@ export default function ReviewDemo() {
           new decision needs the next review cycle.
         </p>
       )}
-    </div>
+    </TiltCard>
   );
 }

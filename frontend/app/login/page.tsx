@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api-client";
@@ -31,25 +32,41 @@ export default function LoginPage() {
     // classes, deliberately -- those are used by the dashboard app, which
     // stays light-only and shouldn't pick up dark-mode rules through this
     // page's changes.
-    <div className="flex min-h-screen items-center justify-center bg-paper px-4 dark:bg-zinc-950">
-      <div className="w-full max-w-sm">
+    <div className="relative flex min-h-screen items-center justify-center bg-paper px-4 dark:bg-zinc-950">
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 bg-[radial-gradient(rgba(15,23,42,0.14)_1px,transparent_1px)] bg-[size:26px_26px] dark:bg-[radial-gradient(rgba(255,255,255,0.12)_1px,transparent_1px)]"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 bg-[radial-gradient(rgba(16,185,129,0.3)_1.5px,transparent_1.5px)] bg-[size:104px_104px] bg-[position:13px_13px] dark:bg-[radial-gradient(rgba(52,211,153,0.25)_1.5px,transparent_1.5px)]"
+      />
+      <div className="relative w-full max-w-sm">
+        <Link
+          href="/"
+          className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 transition-colors hover:text-slate-700 dark:text-zinc-500 dark:hover:text-zinc-300"
+        >
+          <span aria-hidden>&larr;</span> Back to homepage
+        </Link>
         <div className="mb-8 text-center">
-          <Image
-            src="/brand/logo-lockup-light.png"
-            alt="Traceline"
-            width={520}
-            height={130}
-            className="mx-auto h-9 w-auto dark:hidden"
-            priority
-          />
-          <Image
-            src="/brand/logo-lockup.png"
-            alt="Traceline"
-            width={520}
-            height={130}
-            className="mx-auto hidden h-9 w-auto dark:block"
-            priority
-          />
+          <Link href="/" className="inline-block transition-opacity hover:opacity-80">
+            <Image
+              src="/brand/logo-lockup-light.png"
+              alt="Traceline"
+              width={520}
+              height={130}
+              className="mx-auto h-9 w-auto dark:hidden"
+              priority
+            />
+            <Image
+              src="/brand/logo-lockup.png"
+              alt="Traceline"
+              width={520}
+              height={130}
+              className="mx-auto hidden h-9 w-auto dark:block"
+              priority
+            />
+          </Link>
           <p className="mt-2 text-sm text-slate-500 dark:text-zinc-500">
             Audit-ready access reviews
           </p>

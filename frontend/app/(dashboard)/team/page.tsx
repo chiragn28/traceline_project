@@ -90,7 +90,7 @@ export default function TeamPage() {
         </div>
 
         {showAddUser && isAdmin && (
-          <form onSubmit={addUser} className="card grid grid-cols-4 gap-4">
+          <form onSubmit={addUser} className="card grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
             <label className="block">
               <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-zinc-300">Email</span>
               <input
@@ -133,8 +133,8 @@ export default function TeamPage() {
               />
               <span className="text-sm text-slate-700 dark:text-zinc-300">Authorized reviewer</span>
             </label>
-            {error && <p className="col-span-4 text-sm text-red-600 dark:text-red-400">{error}</p>}
-            <div className="col-span-4">
+            {error && <p className="col-span-full text-sm text-red-600 dark:text-red-400">{error}</p>}
+            <div className="col-span-full">
               <button type="submit" className="btn-primary">
                 Add
               </button>

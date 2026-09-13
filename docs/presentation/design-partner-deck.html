@@ -89,11 +89,19 @@
   .navbtn{
     all:unset; pointer-events:auto; cursor:pointer; width:42px; height:42px; border-radius:50%;
     border:1px solid var(--surface-border); display:flex; align-items:center; justify-content:center;
-    color:var(--text); transition:border-color .2s, color .2s; background:var(--surface);
+    color:var(--text); transition:border-color .2s, color .2s, transform .1s; background:var(--surface);
   }
-  .navbtn:hover{ border-color:var(--accent); color:var(--accent); }
+  /* Scoped to real hover-capable pointers only. Unscoped, a trackpad tap
+     on Mac (or any touchscreen) applies :hover on click and there's no
+     mouse-leave event to ever clear it -- the button reads as permanently
+     "stuck" in its active/accent color until something else is tapped.
+     :active below gives tap/click feedback that actually releases. */
+  @media (hover: hover) and (pointer: fine) {
+    .navbtn:hover{ border-color:var(--accent); color:var(--accent); }
+    .navbtn:hover[disabled]{ border-color:var(--surface-border); color:var(--text); }
+  }
+  .navbtn:active{ transform:scale(0.92); }
   .navbtn[disabled]{ opacity:.3; cursor:default; }
-  .navbtn:hover[disabled]{ border-color:var(--surface-border); color:var(--text); }
   .counter{ font-family:'IBM Plex Mono',monospace; font-size:.78rem; color:var(--text-dimmer); letter-spacing:.06em; min-width:64px; text-align:center; }
   .dots{ position:fixed; bottom:36px; left:46px; display:flex; gap:6px; z-index:1000; }
   .dot{ width:6px; height:6px; border-radius:50%; background:var(--surface-border); cursor:pointer; transition:background .2s, transform .2s; }
@@ -317,8 +325,8 @@
         <div class="eyebrow">Let's Talk</div>
         <h1 class="display">Let's find out what's actually happening in your database.</h1>
         <div class="close-grid">
-          <div class="close-item"><div class="k">Email</div><div class="v">[your email]</div></div>
-          <div class="close-item"><div class="k">LinkedIn</div><div class="v">[your LinkedIn]</div></div>
+          <div class="close-item"><div class="k">Email</div><div class="v">cnayak70@gmail.com</div></div>
+          <div class="close-item"><div class="k">LinkedIn</div><div class="v">https://www.linkedin.com/in/cn01</div></div>
           <div class="close-item"><div class="k">Live demo</div><div class="v">traceline-pi.vercel.app</div></div>
         </div>
         <p class="close-note">Read-only. No cost. No commitment. Just fifteen minutes.</p>

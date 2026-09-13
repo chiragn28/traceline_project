@@ -55,7 +55,7 @@ export default function ViolationsPage() {
         </div>
 
         {showRuleForm && canManageRules && (
-          <form onSubmit={createRule} className="card grid grid-cols-3 gap-4">
+          <form onSubmit={createRule} className="card grid grid-cols-1 gap-4 sm:grid-cols-3">
             <label className="block">
               <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-zinc-300">Classification tag</span>
               <input
@@ -80,8 +80,8 @@ export default function ViolationsPage() {
               />
               <span className="text-sm text-slate-700">Production sources only</span>
             </label>
-            {error && <p className="col-span-3 text-sm text-red-600">{error}</p>}
-            <div className="col-span-3">
+            {error && <p className="col-span-full text-sm text-red-600">{error}</p>}
+            <div className="col-span-full">
               <button type="submit" className="btn-primary">
                 Save rule
               </button>

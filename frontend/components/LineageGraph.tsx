@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import { motion, useReducedMotion } from "motion/react";
 import { LineageGraph as LineageGraphData } from "@/lib/api-client";
 
 const COLUMN_X = { pipeline: 90, table: 460, actor: 830 };
@@ -14,6 +15,21 @@ const TAG_COLOR: Record<string, string> = {
   financial: "#d97706",
   public: "#64748b",
 };
+
+// Low-alpha fill laid over the node's own white/dark-zinc base rect so a
+// table's tag reads as a color at a glance, not just the small text label
+// underneath it -- composited over whichever theme's base fill is already
+// there, rather than a separate light/dark pair.
+const TAG_TINT: Record<string, string> = {
+  pii: "rgba(220,38,38,0.11)",
+  financial: "rgba(217,119,6,0.11)",
+  public: "rgba(100,116,139,0.08)",
+};
+const UNTAGGED_TINT = "rgba(148,163,184,0.07)";
+const UNOWNED_TINT = "rgba(245,158,11,0.1)";
+
+const NODE_SHADOW =
+  "drop-shadow-[0_3px_6px_rgba(15,23,42,0.14)] dark:drop-shadow-[0_3px_8px_rgba(0,0,0,0.55)]";
 
 const MIN_ZOOM = 0.35;
 const MAX_ZOOM = 3;
@@ -51,9 +67,19 @@ export default function LineageGraph({ graph }: { graph: LineageGraphData }) {
   const [view, setView] = useState({ zoom: 1, pan: { x: 0, y: 0 } });
   const { zoom, pan } = view;
   const dragRef = useRef<{ startX: number; startY: number; startPanX: number; startPanY: number } | null>(null);
+  // Active touch points by pointerId, so two simultaneous contacts can be
+  // told apart from one -- Pointer Events fire per-finger on touch, but
+  // nothing upstream tracks more than the single most recent one without
+  // this map.
+  const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
+  // Anchored at pinch start so the content point between the two fingers
+  // stays under them as zoom changes, instead of drifting the way
+  // recomputing the anchor every move frame would.
+  const pinchRef = useRef<{ startDist: number; startZoom: number; contentX: number; contentY: number } | null>(null);
   const [dragging, setDragging] = useState(false);
   const [hover, setHover] = useState<Hover | null>(null);
   const [mouse, setMouse] = useState({ x: 0, y: 0 });
+  const reduce = useReducedMotion();
 
   const pipelineY = new Map(graph.pipelines.map((p, i) => [p.id, layout(graph.pipelines.length)[i]]));
   const tableY = new Map(graph.tables.map((t, i) => [t.id, layout(graph.tables.length)[i]]));
@@ -88,20 +114,69 @@ export default function LineageGraph({ graph }: { graph: LineageGraphData }) {
     zoomBy(e.deltaY < 0 ? 1.12 : 1 / 1.12, { x: e.clientX, y: e.clientY });
   }
 
+  function pinchGeometry() {
+    const pts = Array.from(pointersRef.current.values());
+    const [a, b] = pts;
+    const dist = Math.hypot(b.x - a.x, b.y - a.y);
+    const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    return { dist, mid };
+  }
+
   function onPointerDown(e: React.PointerEvent) {
     (e.target as Element).setPointerCapture?.(e.pointerId);
-    dragRef.current = { startX: e.clientX, startY: e.clientY, startPanX: pan.x, startPanY: pan.y };
-    setDragging(true);
+    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    if (pointersRef.current.size === 2) {
+      // A second finger just landed -- stop treating this as a one-finger
+      // pan and start a pinch instead.
+      dragRef.current = null;
+      setDragging(false);
+      const rect = containerRef.current?.getBoundingClientRect();
+      const { dist, mid } = pinchGeometry();
+      const cx = mid.x - (rect?.left ?? 0);
+      const cy = mid.y - (rect?.top ?? 0);
+      pinchRef.current = {
+        startDist: dist,
+        startZoom: view.zoom,
+        contentX: (cx - view.pan.x) / view.zoom,
+        contentY: (cy - view.pan.y) / view.zoom,
+      };
+    } else if (pointersRef.current.size === 1) {
+      dragRef.current = { startX: e.clientX, startY: e.clientY, startPanX: pan.x, startPanY: pan.y };
+      setDragging(true);
+    }
   }
 
   function onPointerMove(e: React.PointerEvent) {
     const rect = containerRef.current?.getBoundingClientRect();
     if (rect) setMouse({ x: e.clientX - rect.left, y: e.clientY - rect.top });
 
+    if (pointersRef.current.has(e.pointerId)) {
+      pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    }
+
+    if (pinchRef.current && pointersRef.current.size === 2) {
+      const { dist, mid } = pinchGeometry();
+      const nextZoom = clampZoom(pinchRef.current.startZoom * (dist / pinchRef.current.startDist));
+      const cx = mid.x - (rect?.left ?? 0);
+      const cy = mid.y - (rect?.top ?? 0);
+      setView({
+        zoom: nextZoom,
+        pan: { x: cx - pinchRef.current.contentX * nextZoom, y: cy - pinchRef.current.contentY * nextZoom },
+      });
+      return;
+    }
+
     if (!dragRef.current) return;
     const dx = e.clientX - dragRef.current.startX;
     const dy = e.clientY - dragRef.current.startY;
     setView((prev) => ({ ...prev, pan: { x: dragRef.current!.startPanX + dx, y: dragRef.current!.startPanY + dy } }));
+  }
+
+  function onPointerUp(e: React.PointerEvent) {
+    pointersRef.current.delete(e.pointerId);
+    if (pointersRef.current.size < 2) pinchRef.current = null;
+    if (pointersRef.current.size === 0) endDrag();
   }
 
   function endDrag() {
@@ -159,13 +234,17 @@ export default function LineageGraph({ graph }: { graph: LineageGraphData }) {
         // container's background rather than something inside the panned/
         // zoomed <svg>, it stays put like paper under a diagram instead of
         // scaling or drifting with the graph.
-        className={`relative h-[480px] w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-50 bg-[radial-gradient(rgba(15,23,42,0.09)_1px,transparent_1px)] bg-[size:22px_22px] dark:border-zinc-800 dark:bg-zinc-950 dark:bg-[radial-gradient(rgba(255,255,255,0.09)_1px,transparent_1px)] ${dragging ? "cursor-grabbing" : "cursor-grab"}`}
+        // No border here -- this already sits inside the page's .card, and a
+        // second bordered box around it read as a card nested in a card.
+        // An inset shadow reads as a recessed panel instead, without a
+        // second outline competing with the card's own border.
+        className={`relative h-[480px] w-full touch-none overflow-hidden rounded-lg bg-slate-50/80 bg-[radial-gradient(rgba(15,23,42,0.1)_1px,transparent_1px)] bg-[size:22px_22px] shadow-[inset_0_1px_4px_rgba(15,23,42,0.06)] dark:bg-zinc-950/60 dark:bg-[radial-gradient(rgba(255,255,255,0.1)_1px,transparent_1px)] dark:shadow-[inset_0_1px_4px_rgba(0,0,0,0.4)] ${dragging ? "cursor-grabbing" : "cursor-grab"}`}
         onWheel={onWheel}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
-        onPointerUp={endDrag}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
         onPointerLeave={() => {
-          endDrag();
           setHover(null);
         }}
       >
@@ -197,7 +276,7 @@ export default function LineageGraph({ graph }: { graph: LineageGraphData }) {
             const midX = (x1 + x2) / 2;
             const active = hover?.kind === "pipeline_edge" && hover.index === i;
             return (
-              <path
+              <motion.path
                 key={`pe-${i}`}
                 d={`M${x1},${y1} C${midX},${y1} ${midX},${y2} ${x2},${y2}`}
                 strokeWidth={active ? 3 : 1.5}
@@ -206,6 +285,9 @@ export default function LineageGraph({ graph }: { graph: LineageGraphData }) {
                 className={active ? "stroke-emerald-600 dark:stroke-emerald-400" : "stroke-slate-700 dark:stroke-zinc-400"}
                 onPointerEnter={() => setHover({ kind: "pipeline_edge", index: i })}
                 onPointerLeave={() => setHover(null)}
+                initial={reduce ? false : { opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5, delay: reduce ? 0 : 0.2 + i * 0.04 }}
               />
             );
           })}
@@ -218,7 +300,7 @@ export default function LineageGraph({ graph }: { graph: LineageGraphData }) {
             const midX = (x1 + x2) / 2;
             const active = hover?.kind === "access_edge" && hover.index === i;
             return (
-              <path
+              <motion.path
                 key={`ae-${i}`}
                 d={`M${x1},${y1} C${midX},${y1} ${midX},${y2} ${x2},${y2}`}
                 strokeWidth={active ? 2.5 : 1.25}
@@ -228,37 +310,48 @@ export default function LineageGraph({ graph }: { graph: LineageGraphData }) {
                 className={active ? "stroke-emerald-600 dark:stroke-emerald-400" : "stroke-slate-400 dark:stroke-zinc-600"}
                 onPointerEnter={() => setHover({ kind: "access_edge", index: i })}
                 onPointerLeave={() => setHover(null)}
+                initial={reduce ? false : { opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5, delay: reduce ? 0 : 0.3 + i * 0.04 }}
               />
             );
           })}
 
-          {graph.pipelines.map((p) => (
+          {graph.pipelines.map((p, i) => (
             <g
               key={p.id}
               transform={`translate(${COLUMN_X.pipeline}, ${pipelineY.get(p.id)})`}
               onPointerEnter={() => setHover({ kind: "pipeline", id: p.id })}
               onPointerLeave={() => setHover(null)}
-              className="cursor-pointer"
+              className={`cursor-pointer ${NODE_SHADOW}`}
             >
-              <rect
-                width={NODE_W.pipeline}
-                height={NODE_H}
-                rx={8}
-                className={`fill-indigo-50 dark:fill-indigo-500/10 ${hover?.kind === "pipeline" && hover.id === p.id ? "stroke-indigo-600 dark:stroke-indigo-400" : "stroke-indigo-300 dark:stroke-indigo-500/40"}`}
-                strokeWidth={hover?.kind === "pipeline" && hover.id === p.id ? 2 : 1}
-              />
-              <text x={10} y={20} className="fill-indigo-800 text-[12px] font-medium dark:fill-indigo-300">
-                {p.name.length > 21 ? p.name.slice(0, 20) + "…" : p.name}
-              </text>
-              <text x={10} y={38} className="fill-indigo-500 text-[10px] dark:fill-indigo-400">
-                {p.reads_count} read · {p.writes_count} write
-              </text>
+              <motion.g
+                initial={reduce ? false : { opacity: 0, scale: 0.85 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.4, delay: reduce ? 0 : i * 0.05, ease: [0.16, 1, 0.3, 1] }}
+                style={{ transformOrigin: `${NODE_W.pipeline / 2}px ${NODE_H / 2}px` }}
+              >
+                <rect
+                  width={NODE_W.pipeline}
+                  height={NODE_H}
+                  rx={8}
+                  className={`fill-indigo-50 dark:fill-indigo-500/10 ${hover?.kind === "pipeline" && hover.id === p.id ? "stroke-indigo-600 dark:stroke-indigo-400" : "stroke-indigo-300 dark:stroke-indigo-500/40"}`}
+                  strokeWidth={hover?.kind === "pipeline" && hover.id === p.id ? 2 : 1}
+                />
+                <text x={10} y={20} className="fill-indigo-800 text-[12px] font-medium dark:fill-indigo-300">
+                  {p.name.length > 21 ? p.name.slice(0, 20) + "…" : p.name}
+                </text>
+                <text x={10} y={38} className="fill-indigo-500 text-[10px] dark:fill-indigo-400">
+                  {p.reads_count} read · {p.writes_count} write
+                </text>
+              </motion.g>
             </g>
           ))}
 
-          {graph.tables.map((t) => {
+          {graph.tables.map((t, i) => {
             const primaryTag = t.tags[0];
             const color = primaryTag ? TAG_COLOR[primaryTag] || "#0f172a" : "#94a3b8";
+            const tint = primaryTag ? TAG_TINT[primaryTag] || UNTAGGED_TINT : UNTAGGED_TINT;
             const active = hover?.kind === "table" && hover.id === t.id;
             return (
               <g
@@ -266,30 +359,38 @@ export default function LineageGraph({ graph }: { graph: LineageGraphData }) {
                 transform={`translate(${COLUMN_X.table}, ${tableY.get(t.id)})`}
                 onPointerEnter={() => setHover({ kind: "table", id: t.id })}
                 onPointerLeave={() => setHover(null)}
-                className="cursor-pointer"
+                className={`cursor-pointer ${NODE_SHADOW}`}
               >
-                <rect
-                  width={NODE_W.table}
-                  height={NODE_H}
-                  rx={8}
-                  className="fill-white dark:fill-zinc-900"
-                  stroke={color}
-                  strokeWidth={active ? 3 : 2}
-                />
-                <text x={10} y={18} className="fill-slate-800 text-[12px] font-semibold dark:fill-zinc-100">
-                  {t.table_name}
-                </text>
-                <text x={10} y={34} className="text-[10px]" fill={color}>
-                  {t.tags.length ? t.tags.join(", ") : "untagged"}
-                </text>
-                <text x={10} y={48} className="fill-slate-400 text-[10px] dark:fill-zinc-500">
-                  {t.access_count_30d} accesses · {t.distinct_actor_count} actors
-                </text>
+                <motion.g
+                  initial={reduce ? false : { opacity: 0, scale: 0.85 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.4, delay: reduce ? 0 : i * 0.05, ease: [0.16, 1, 0.3, 1] }}
+                  style={{ transformOrigin: `${NODE_W.table / 2}px ${NODE_H / 2}px` }}
+                >
+                  <rect
+                    width={NODE_W.table}
+                    height={NODE_H}
+                    rx={8}
+                    className="fill-white dark:fill-zinc-900"
+                    stroke={color}
+                    strokeWidth={active ? 3 : 2}
+                  />
+                  <rect width={NODE_W.table} height={NODE_H} rx={8} fill={tint} className="pointer-events-none" />
+                  <text x={10} y={18} className="fill-slate-800 text-[12px] font-semibold dark:fill-zinc-100">
+                    {t.table_name}
+                  </text>
+                  <text x={10} y={34} className="text-[10px]" fill={color}>
+                    {t.tags.length ? t.tags.join(", ") : "untagged"}
+                  </text>
+                  <text x={10} y={48} className="fill-slate-400 text-[10px] dark:fill-zinc-500">
+                    {t.access_count_30d} accesses · {t.distinct_actor_count} actors
+                  </text>
+                </motion.g>
               </g>
             );
           })}
 
-          {graph.actors.map((a) => {
+          {graph.actors.map((a, i) => {
             const active = hover?.kind === "actor" && hover.id === a.identifier;
             const unattributed = a.actor_type === "service_account" && !a.owner_email;
             return (
@@ -298,26 +399,36 @@ export default function LineageGraph({ graph }: { graph: LineageGraphData }) {
                 transform={`translate(${COLUMN_X.actor}, ${actorY.get(a.identifier)})`}
                 onPointerEnter={() => setHover({ kind: "actor", id: a.identifier })}
                 onPointerLeave={() => setHover(null)}
-                className="cursor-pointer"
+                className={`cursor-pointer ${NODE_SHADOW}`}
               >
-                <rect
-                  width={NODE_W.actor}
-                  height={NODE_H}
-                  rx={12}
-                  className={`fill-white dark:fill-zinc-900 ${unattributed ? "stroke-amber-500" : "stroke-slate-400 dark:stroke-zinc-600"}`}
-                  strokeWidth={active ? 3 : unattributed ? 1.75 : 1}
-                  strokeDasharray={unattributed ? "3 2" : undefined}
-                />
-                <text x={10} y={18} className="fill-slate-700 text-[12px] font-medium dark:fill-zinc-200">
-                  {a.identifier.length > 18 ? a.identifier.slice(0, 17) + "…" : a.identifier}
-                </text>
-                <text x={10} y={34} className="fill-slate-400 text-[10px] dark:fill-zinc-500">
-                  {a.actor_type}
-                  {unattributed ? " · unowned" : ""}
-                </text>
-                <text x={10} y={48} className="fill-slate-400 text-[10px] dark:fill-zinc-500">
-                  {a.access_count_30d}x · {fmtDate(a.last_seen_at)}
-                </text>
+                <motion.g
+                  initial={reduce ? false : { opacity: 0, scale: 0.85 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.4, delay: reduce ? 0 : i * 0.05, ease: [0.16, 1, 0.3, 1] }}
+                  style={{ transformOrigin: `${NODE_W.actor / 2}px ${NODE_H / 2}px` }}
+                >
+                  <rect
+                    width={NODE_W.actor}
+                    height={NODE_H}
+                    rx={12}
+                    className={`fill-white dark:fill-zinc-900 ${unattributed ? "stroke-amber-500" : "stroke-slate-400 dark:stroke-zinc-600"}`}
+                    strokeWidth={active ? 3 : unattributed ? 1.75 : 1}
+                    strokeDasharray={unattributed ? "3 2" : undefined}
+                  />
+                  {unattributed && (
+                    <rect width={NODE_W.actor} height={NODE_H} rx={12} fill={UNOWNED_TINT} className="pointer-events-none" />
+                  )}
+                  <text x={10} y={18} className="fill-slate-700 text-[12px] font-medium dark:fill-zinc-200">
+                    {a.identifier.length > 18 ? a.identifier.slice(0, 17) + "…" : a.identifier}
+                  </text>
+                  <text x={10} y={34} className="fill-slate-400 text-[10px] dark:fill-zinc-500">
+                    {a.actor_type}
+                    {unattributed ? " · unowned" : ""}
+                  </text>
+                  <text x={10} y={48} className="fill-slate-400 text-[10px] dark:fill-zinc-500">
+                    {a.access_count_30d}x · {fmtDate(a.last_seen_at)}
+                  </text>
+                </motion.g>
               </g>
             );
           })}

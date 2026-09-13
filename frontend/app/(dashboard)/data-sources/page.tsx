@@ -71,7 +71,7 @@ export default function DataSourcesPage() {
       </div>
 
       {showForm && canConnect && (
-        <form onSubmit={handleSubmit} className="card grid grid-cols-2 gap-4">
+        <form onSubmit={handleSubmit} className="card grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="Name">
             <input
               className="input"
@@ -141,8 +141,8 @@ export default function DataSourcesPage() {
               This is a production source (non-production sources are excluded from residency violation checks)
             </label>
           </div>
-          {error && <p className="col-span-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
-          <div className="col-span-2">
+          {error && <p className="col-span-full text-sm text-red-600 dark:text-red-400">{error}</p>}
+          <div className="col-span-full">
             <button type="submit" disabled={submitting} className="btn-primary">
               {submitting ? "Connecting..." : "Connect"}
             </button>

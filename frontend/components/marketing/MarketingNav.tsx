@@ -4,7 +4,7 @@ import ThemeToggle from "./ThemeToggle";
 
 export default function MarketingNav() {
   return (
-    <header className="sticky top-0 z-20 h-16 border-b border-slate-200 bg-paper/85 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/85">
+    <header className="sticky top-0 z-20 h-16 border-b border-slate-200 bg-paper/75 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/75">
       <div className="mx-auto flex h-full max-w-6xl items-center justify-between px-6">
         <Link href="/" className="flex items-center">
           <Image
@@ -12,7 +12,7 @@ export default function MarketingNav() {
             alt="Traceline"
             width={520}
             height={130}
-            className="h-7 w-auto dark:hidden"
+            className="h-8 w-auto dark:hidden"
             priority
           />
           <Image
@@ -20,7 +20,7 @@ export default function MarketingNav() {
             alt="Traceline"
             width={520}
             height={130}
-            className="hidden h-7 w-auto dark:block"
+            className="hidden h-8 w-auto dark:block"
             priority
           />
         </Link>

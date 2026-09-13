@@ -1,6 +1,7 @@
 "use client";
 
 import { motion, useReducedMotion } from "motion/react";
+import TiltCard from "./TiltCard";
 
 const lines = [
   { t: "2026-09-09 04:12:01 UTC", rest: "svc-reporting  SELECT  billing.invoices" },
@@ -34,7 +35,7 @@ export default function TerminalPanel() {
           Nothing new to install, nothing new to trust.
         </p>
 
-        <div className="overflow-hidden rounded-2xl border border-white/10 bg-slate-950/80 shadow-[0_40px_80px_-30px_rgba(0,0,0,0.6)]">
+        <TiltCard maxTilt={5} className="overflow-hidden rounded-2xl border border-white/10 bg-slate-950/80 shadow-[0_40px_80px_-30px_rgba(0,0,0,0.6)]">
           <div className="flex items-center gap-1.5 border-b border-white/10 px-4 py-3">
             <span className="h-2.5 w-2.5 rounded-full bg-slate-700" />
             <span className="h-2.5 w-2.5 rounded-full bg-slate-700" />
@@ -68,7 +69,7 @@ export default function TerminalPanel() {
               />
             )}
           </div>
-        </div>
+        </TiltCard>
       </div>
     </section>
   );
