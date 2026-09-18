@@ -1,5 +1,10 @@
 version: "3.9"
 
+# Pinned so the project name (and therefore the traceline_* volume names) no longer depends
+# on the folder name. Without this, moving or renaming the folder makes compose look for
+# volumes under the new name and the databases come up empty.
+name: traceline
+
 services:
   # Traceline's own metadata store. Never shares infrastructure with any
   # customer's data warehouse.
