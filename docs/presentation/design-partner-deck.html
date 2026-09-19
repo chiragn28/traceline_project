@@ -173,6 +173,83 @@
   .close-note{ margin-top:44px; font-size:.95rem; color:var(--text-dim); }
 
   .name-tag{ margin-top:8px; font-family:'IBM Plex Mono',monospace; font-size:.85rem; color:var(--text-dim); }
+
+  /* ============ ENTRANCE CHOREOGRAPHY ============
+     Deliberately NOT hidden-by-default (no bare opacity:0) -- the resting
+     state of every animated element is fully visible. The .enter class,
+     added by script each time a slide becomes current, is what plays the
+     rise-in; without it (JS disabled, or before it runs) everything just
+     shows, statically. A slide "build" only ever enhances, never gates,
+     the content. */
+  @keyframes riseIn{ from{ opacity:0; transform:translateY(16px); } to{ opacity:1; transform:translateY(0); } }
+  .slide.enter .content > *{ animation:riseIn .6s cubic-bezier(.16,1,.3,1) both; }
+  .slide.enter .content > *:nth-child(1){ animation-delay:.02s; }
+  .slide.enter .content > *:nth-child(2){ animation-delay:.10s; }
+  .slide.enter .content > *:nth-child(3){ animation-delay:.18s; }
+  .slide.enter .content > *:nth-child(4){ animation-delay:.26s; }
+  .slide.enter .content > *:nth-child(5){ animation-delay:.34s; }
+
+  .steps-log.enter .row{ animation:riseIn .45s cubic-bezier(.16,1,.3,1) both; }
+  .steps-log.enter .row:nth-child(1){ animation-delay:.06s; }
+  .steps-log.enter .row:nth-child(2){ animation-delay:.16s; }
+  .steps-log.enter .row:nth-child(3){ animation-delay:.26s; }
+  .steps-log.enter .row:nth-child(4){ animation-delay:.36s; }
+  .steps-log.enter .row:nth-child(5){ animation-delay:.46s; }
+
+  .trust-grid.enter .trust{ animation:riseIn .5s cubic-bezier(.16,1,.3,1) both; }
+  .trust-grid.enter .trust:nth-child(1){ animation-delay:.04s; }
+  .trust-grid.enter .trust:nth-child(2){ animation-delay:.10s; }
+  .trust-grid.enter .trust:nth-child(3){ animation-delay:.16s; }
+  .trust-grid.enter .trust:nth-child(4){ animation-delay:.22s; }
+  .trust-grid.enter .trust:nth-child(5){ animation-delay:.28s; }
+  .trust-grid.enter .trust:nth-child(6){ animation-delay:.34s; }
+
+  @media (prefers-reduced-motion: reduce){
+    .slide.enter .content > *, .steps-log.enter .row, .trust-grid.enter .trust{ animation:none; }
+  }
+
+  /* ============ MECHANISM SLIDE — FLOW PULSE ============
+     A single glowing point travels the rail under the six pipeline steps
+     each time this slide is entered, standing in for "data actually moves
+     through this" rather than six static labels claiming it does. */
+  .pipeline{ position:relative; }
+  .pipeline::before{ content:''; position:absolute; left:0; right:0; top:8px; height:1px; background:var(--line); }
+  .flow-dot{
+    position:absolute; top:5px; left:0; width:7px; height:7px; margin-left:-3px;
+    border-radius:50%; background:var(--accent); box-shadow:0 0 12px 2px var(--accent); opacity:0;
+  }
+  .pipeline.enter .flow-dot{ animation:flowMove 3.2s cubic-bezier(.4,0,.2,1) both; }
+  @keyframes flowMove{
+    0%{ left:0%; opacity:0; }
+    8%{ opacity:1; }
+    92%{ opacity:1; }
+    100%{ left:100%; opacity:0; }
+  }
+  @media (prefers-reduced-motion: reduce){ .pipeline.enter .flow-dot{ animation:none; } }
+
+  /* ============ HOVER TILT — trust tiles + the demo card ============
+     Plain-JS perspective tilt (see script), not a decoration everywhere:
+     scoped to the two moments a presenter is likely to gesture at or hover
+     over live -- "here's proof" and "here's the live URL". */
+  .trust, .demo-card{ transition:transform .15s ease-out; transform-style:preserve-3d; }
+
+  /* ============ COVER SLIDE — interactive access graph ============
+     Faint, mouse-tilted constellation behind the headline, masked out from
+     under the text itself so it reads as ambient depth rather than clutter.
+     Same hub-and-satellite motif as the product's own access graph -- the
+     deck's opening image is, deliberately, a small preview of the product. */
+  .cover-graph{
+    position:absolute; inset:0; pointer-events:none; opacity:.4;
+    -webkit-mask-image:linear-gradient(to right, transparent, transparent 26%, black 58%);
+    mask-image:linear-gradient(to right, transparent, transparent 26%, black 58%);
+  }
+  .cover-graph svg{ width:100%; height:100%; display:block; }
+  .cover-graph .edge{ stroke:var(--line); stroke-width:1; }
+  .cover-graph .node{ fill:var(--surface); stroke:var(--text-dimmer); stroke-width:1.2; }
+  .cover-graph .node.core{ stroke:var(--accent); }
+  .cover-graph .ping{ fill:none; stroke:var(--accent); opacity:.5; animation:ping 2.8s ease-out infinite; }
+  @keyframes ping{ 0%{ r:11; opacity:.5; } 100%{ r:38; opacity:0; } }
+  @media (prefers-reduced-motion: reduce){ .cover-graph .ping{ animation:none; opacity:0; } }
 </style>
 
 <div class="viewport" id="viewport">
@@ -181,6 +258,26 @@
 
     <!-- 00 COVER -->
     <section class="slide">
+      <div class="cover-graph" id="coverGraph" aria-hidden="true">
+        <svg viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg">
+          <line class="edge" x1="620" y1="300" x2="420" y2="120"/>
+          <line class="edge" x1="620" y1="300" x2="720" y2="110"/>
+          <line class="edge" x1="620" y1="300" x2="760" y2="300"/>
+          <line class="edge" x1="620" y1="300" x2="680" y2="470"/>
+          <line class="edge" x1="620" y1="300" x2="460" y2="480"/>
+          <line class="edge" x1="620" y1="300" x2="340" y2="340"/>
+          <line class="edge" x1="340" y1="340" x2="300" y2="180"/>
+          <circle class="ping" cx="620" cy="300" r="11"/>
+          <circle class="node core" cx="620" cy="300" r="10"/>
+          <circle class="node" cx="420" cy="120" r="5"/>
+          <circle class="node" cx="720" cy="110" r="5"/>
+          <circle class="node" cx="760" cy="300" r="5"/>
+          <circle class="node" cx="680" cy="470" r="5"/>
+          <circle class="node" cx="460" cy="480" r="5"/>
+          <circle class="node" cx="340" cy="340" r="5"/>
+          <circle class="node" cx="300" cy="180" r="5"/>
+        </svg>
+      </div>
       <div class="num mono">00 / 09</div>
       <div class="content">
         <div class="eyebrow">A Design Partnership Proposal · DIFC</div>
@@ -219,7 +316,7 @@
       <div class="content">
         <div class="eyebrow">What Actually Happens</div>
         <h1 class="display">Here's what "we did an access review" usually means.</h1>
-        <div class="steps-log">
+        <div class="steps-log" data-replay>
           <div class="row"><span class="arrow">→</span> Export a list of everyone with access</div>
           <div class="row"><span class="arrow">→</span> Email each system owner: "do you still need this?"</div>
           <div class="row"><span class="arrow">→</span> Wait. Chase replies.</div>
@@ -237,7 +334,8 @@
         <div class="eyebrow">What We Built</div>
         <h1 class="display">So it watches for real.</h1>
         <p class="lede">Read-only in. Audit-grade evidence out. No raw query text ever stored.</p>
-        <div class="pipeline">
+        <div class="pipeline" data-replay>
+          <div class="flow-dot" aria-hidden="true"></div>
           <div class="pstep"><div class="pn">01</div><h4>Connect</h4><p>A read-only credential, verified — not assumed.</p></div>
           <div class="pstep"><div class="pn">02</div><h4>Observe</h4><p>Tails the access log. Who touched what, and when.</p></div>
           <div class="pstep"><div class="pn">03</div><h4>Check grants</h4><p>Reads live database GRANTs directly — not a log guess.</p></div>
@@ -254,7 +352,7 @@
       <div class="content">
         <div class="eyebrow">Before You Ask</div>
         <h1 class="display">Yes. It's read-only. Here's proof, not a promise.</h1>
-        <div class="trust-grid">
+        <div class="trust-grid" data-replay>
           <div class="trust"><div class="check">✓</div><h4>Read-only, verified</h4><p>Checked for write access at connection time and on demand — not just assumed.</p></div>
           <div class="trust"><div class="check">✓</div><h4>No raw queries stored</h4><p>Metadata only: actor, table, timestamp. The statement itself is never retained.</p></div>
           <div class="trust"><div class="check">✓</div><h4>Tenant-isolated by design</h4><p>Postgres row-level security enforces isolation at the database layer, not just app code.</p></div>
@@ -365,12 +463,38 @@
   var prevBtn = document.getElementById('prevBtn');
   var nextBtn = document.getElementById('nextBtn');
 
+  // Re-plays each slide's entrance every time it becomes current, not just
+  // on first load -- classList add/remove alone won't restart a CSS
+  // animation on an element that already carries the class, so the class
+  // is stripped and a layout read forces reflow before it's re-added.
+  var hasEntered = false;
+  function playEnter(){
+    slides.forEach(function(s){ s.classList.remove('enter'); });
+    var current = slides[index];
+    var replay = current.querySelectorAll('[data-replay]');
+    replay.forEach(function(el){ el.classList.remove('enter'); });
+    void current.offsetWidth;
+    current.classList.add('enter');
+    replay.forEach(function(el){ el.classList.add('enter'); });
+  }
+
   function render(){
     track.style.transform = 'translateX(-' + (index * 100) + 'vw)';
     counter.textContent = String(index).padStart(2, '0') + ' / ' + String(total - 1).padStart(2, '0');
     prevBtn.disabled = index === 0;
     nextBtn.disabled = index === total - 1;
     dots.forEach(function(d, i){ d.classList.toggle('active', i === index); });
+
+    if (!hasEntered || reduceMotion) {
+      // First paint, or motion is reduced: reveal immediately, no wait for
+      // a slide-slide transition that either hasn't started or won't play.
+      hasEntered = true;
+      playEnter();
+    } else {
+      // Otherwise wait out the track's .55s slide before the content
+      // build starts, so text doesn't arrive mid-slide.
+      setTimeout(playEnter, 560);
+    }
   }
 
   function go(i){
@@ -387,10 +511,49 @@
   });
 
   // click anywhere on the slide body (not on interactive controls) advances
-  document.getElementById('viewport').addEventListener('click', function(e){
+  var viewport = document.getElementById('viewport');
+  viewport.addEventListener('click', function(e){
     if (e.target.closest('.navbtn') || e.target.closest('.dot')) return;
     go(index + 1);
   });
+
+  // Cursor-tracked 3D tilt on the trust tiles and the live-demo card --
+  // scoped to the two slides a presenter is likely to gesture at while
+  // talking, not applied as blanket decoration.
+  if (!reduceMotion) {
+    var tiltables = document.querySelectorAll('.trust, .demo-card');
+    tiltables.forEach(function(el){
+      el.addEventListener('mousemove', function(e){
+        var r = el.getBoundingClientRect();
+        var px = (e.clientX - r.left) / r.width;
+        var py = (e.clientY - r.top) / r.height;
+        var rx = (0.5 - py) * 10;
+        var ry = (px - 0.5) * 10;
+        el.style.transform = 'perspective(700px) rotateX(' + rx.toFixed(2) + 'deg) rotateY(' + ry.toFixed(2) + 'deg)';
+      });
+      el.addEventListener('mouseleave', function(){ el.style.transform = ''; });
+    });
+  }
+
+  // Mouse-parallax tilt on the cover slide's background graph -- eased
+  // toward the cursor rather than snapping to it, and only actually moves
+  // while slide 0 is showing (the loop keeps running, cheaply, so it's
+  // already settled if the presenter loops back to the cover later).
+  var coverGraph = document.getElementById('coverGraph');
+  if (coverGraph && !reduceMotion) {
+    var tx = 0, ty = 0, cx = 0, cy = 0;
+    viewport.addEventListener('mousemove', function(e){
+      if (index !== 0) return;
+      tx = ((e.clientX / window.innerWidth) - 0.5) * 16;
+      ty = ((e.clientY / window.innerHeight) - 0.5) * -10;
+    });
+    (function tick(){
+      cx += (tx - cx) * 0.06;
+      cy += (ty - cy) * 0.06;
+      coverGraph.style.transform = 'perspective(1200px) rotateX(' + cy.toFixed(2) + 'deg) rotateY(' + cx.toFixed(2) + 'deg)';
+      requestAnimationFrame(tick);
+    })();
+  }
 
   render();
 })();

@@ -1,0 +1,489 @@
+<title>Traceline Business Case</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders:wght@600;700;800;900&family=Public+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap">
+<style>
+  /* ============ TOKENS — same brand system as the design-partner deck,
+     so the two investor-facing artifacts read as one company. ============ */
+  :root{
+    --bg:#0b0f11; --surface:#121819; --surface-2:#161e20; --surface-border:#233032;
+    --text:#e9e6da; --text-dim:#9aa8a6; --text-dimmer:#6c7876;
+    --accent:#22b8bd; --accent-bright:#7fe9e6; --accent-text:#06232a;
+    --flag:#d98a34; --flag-bright:#f0ad5f; --line:#223032;
+    --paper-bg:#eae6d4;
+    --shadow: 0 30px 80px -30px rgba(0,0,0,.7);
+  }
+  @media (prefers-color-scheme: light){
+    :root:not([data-theme="dark"]){
+      --bg:#f1efe4; --surface:#fbfaf3; --surface-2:#ffffff; --surface-border:#ddd8c4;
+      --text:#1a1e19; --text-dim:#565f57; --text-dimmer:#7c847c;
+      --accent:#0d8a8f; --accent-bright:#0aa5ab; --accent-text:#f2ffff;
+      --flag:#a8641c; --flag-bright:#8a4f13; --line:#e3ddc9;
+      --shadow: 0 30px 70px -35px rgba(30,25,10,.3);
+    }
+  }
+  :root[data-theme="light"]{
+    --bg:#f1efe4; --surface:#fbfaf3; --surface-2:#ffffff; --surface-border:#ddd8c4;
+    --text:#1a1e19; --text-dim:#565f57; --text-dimmer:#7c847c;
+    --accent:#0d8a8f; --accent-bright:#0aa5ab; --accent-text:#f2ffff;
+    --flag:#a8641c; --flag-bright:#8a4f13; --line:#e3ddc9;
+    --shadow: 0 30px 70px -35px rgba(30,25,10,.3);
+  }
+  :root[data-theme="dark"]{
+    --bg:#0b0f11; --surface:#121819; --surface-2:#161e20; --surface-border:#233032;
+    --text:#e9e6da; --text-dim:#9aa8a6; --text-dimmer:#6c7876;
+    --accent:#22b8bd; --accent-bright:#7fe9e6; --accent-text:#06232a;
+    --flag:#d98a34; --flag-bright:#f0ad5f; --line:#223032;
+    --shadow: 0 30px 80px -30px rgba(0,0,0,.7);
+  }
+
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; overflow:hidden; }
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:'Public Sans', sans-serif; line-height:1.5;
+  }
+  h1,h2{ font-family:'Big Shoulders', sans-serif; font-weight:800; text-wrap:balance; margin:0; }
+  .mono{ font-family:'IBM Plex Mono', monospace; }
+  ::selection{ background:var(--accent); color:var(--accent-text); }
+
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace; font-size:.8rem; letter-spacing:.16em; text-transform:uppercase;
+    color:var(--accent); display:flex; align-items:center; gap:.7em; margin-bottom:22px;
+  }
+  .eyebrow::before{ content:''; width:1.6em; height:1px; background:var(--accent); display:inline-block; }
+
+  /* ============ DECK MECHANICS ============ */
+  .viewport{ position:relative; width:100vw; height:100vh; overflow:hidden; }
+  .track{ display:flex; height:100%; transition:transform .55s cubic-bezier(.65,0,.35,1); will-change:transform; }
+  @media (prefers-reduced-motion: reduce){ .track{ transition:none; } }
+  .slide{
+    flex:0 0 100vw; height:100%; overflow:hidden;
+    display:flex; flex-direction:column; justify-content:center;
+    padding:70px 100px; position:relative;
+  }
+  .slide::before{
+    content:''; position:absolute; inset:26px; border:1px solid rgba(128,128,128,.16); pointer-events:none;
+  }
+  .slide .content{ max-width:1080px; }
+  .slide.wide .content{ max-width:1300px; }
+
+  .num{
+    position:absolute; top:40px; right:46px;
+    font-family:'IBM Plex Mono',monospace; font-size:.75rem; color:var(--text-dimmer); letter-spacing:.08em;
+  }
+  .brandmark{ position:absolute; top:38px; left:46px; font-family:'IBM Plex Mono',monospace; font-size:.72rem; letter-spacing:.14em; color:var(--text-dimmer); }
+  .brandmark b{ color:var(--text); }
+
+  h1.display{ font-size:clamp(2.2rem, 4.8vw, 4.2rem); line-height:1.03; }
+  .lede{ margin-top:22px; font-size:clamp(1rem,1.5vw,1.25rem); color:var(--text-dim); max-width:58ch; }
+  .lede b{ color:var(--text); font-weight:700; }
+
+  .navbar{
+    position:fixed; bottom:34px; left:0; right:0;
+    display:flex; align-items:center; justify-content:center; gap:22px;
+    z-index:1000; pointer-events:none;
+  }
+  .navbar > *{ pointer-events:auto; }
+  .navbtn{
+    all:unset; pointer-events:auto; cursor:pointer; width:42px; height:42px; border-radius:50%;
+    border:1px solid var(--surface-border); display:flex; align-items:center; justify-content:center;
+    color:var(--text); transition:border-color .2s, color .2s, transform .1s; background:var(--surface);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .navbtn:hover{ border-color:var(--accent); color:var(--accent); }
+    .navbtn:hover[disabled]{ border-color:var(--surface-border); color:var(--text); }
+  }
+  .navbtn:active{ transform:scale(0.92); }
+  .navbtn[disabled]{ opacity:.3; cursor:default; }
+  .counter{ font-family:'IBM Plex Mono',monospace; font-size:.78rem; color:var(--text-dimmer); letter-spacing:.06em; min-width:64px; text-align:center; }
+  .dots{ position:fixed; bottom:36px; left:46px; display:flex; gap:6px; z-index:1000; }
+  .dot{ width:6px; height:6px; border-radius:50%; background:var(--surface-border); cursor:pointer; transition:background .2s, transform .2s; }
+  .dot.active{ background:var(--accent); transform:scale(1.4); }
+
+  .hint{
+    position:absolute; bottom:36px; right:46px;
+    font-family:'IBM Plex Mono',monospace; font-size:.68rem; color:var(--text-dimmer); letter-spacing:.06em;
+  }
+
+  /* ---- slide-specific bits ---- */
+  .chip-row{ display:flex; gap:12px; flex-wrap:wrap; margin-top:30px; }
+  .chip{
+    font-family:'IBM Plex Mono',monospace; font-size:.78rem; color:var(--text-dim);
+    border:1px solid var(--line); padding:9px 15px; border-radius:50px;
+  }
+  .chip b{ color:var(--text); }
+
+  .steps-log{ margin-top:34px; display:flex; flex-direction:column; gap:0; border-top:1px solid var(--line); max-width:70ch; }
+  .steps-log .row{ display:flex; gap:16px; padding:16px 0; border-bottom:1px solid var(--line); align-items:baseline; }
+  .steps-log .row .n{ font-family:'IBM Plex Mono',monospace; font-size:.75rem; color:var(--accent); flex:none; width:1.6em; }
+  .steps-log .row .t{ font-size:.98rem; color:var(--text-dim); }
+  .steps-log .row .t b{ color:var(--text); font-weight:700; }
+
+  .cost-grid{ margin-top:34px; display:grid; grid-template-columns:1fr 1fr; gap:1px; background:var(--line); border:1px solid var(--line); max-width:900px; }
+  .cost{ background:var(--surface); padding:20px 24px; }
+  .cost .k{ font-family:'IBM Plex Mono',monospace; font-size:.68rem; letter-spacing:.08em; text-transform:uppercase; color:var(--text-dimmer); margin-bottom:8px; }
+  .cost .v{ font-size:.95rem; color:var(--text-dim); line-height:1.5; }
+  .cost .tbd{ color:var(--flag-bright); font-family:'IBM Plex Mono',monospace; font-size:.72rem; margin-top:8px; display:inline-block; }
+
+  .pipeline{ margin-top:38px; display:flex; align-items:stretch; gap:0; flex-wrap:wrap; position:relative; }
+  .pipeline::before{ content:''; position:absolute; left:0; right:0; top:8px; height:1px; background:var(--line); }
+  .pstep{ flex:1 1 140px; padding:18px 22px 18px 0; position:relative; }
+  .pstep:not(:last-child)::after{ content:'→'; position:absolute; right:5px; top:18px; color:var(--accent); font-family:'IBM Plex Mono',monospace; font-size:.85rem; }
+  .pstep .pn{ font-family:'IBM Plex Mono',monospace; font-size:.68rem; color:var(--accent); letter-spacing:.08em; }
+  .pstep h4{ font-family:'Public Sans',sans-serif; font-weight:700; font-size:.94rem; margin:6px 0 4px; }
+  .pstep p{ margin:0; font-size:.78rem; color:var(--text-dim); }
+  .flow-dot{
+    position:absolute; top:5px; left:0; width:7px; height:7px; margin-left:-3px;
+    border-radius:50%; background:var(--accent); box-shadow:0 0 12px 2px var(--accent); opacity:0;
+  }
+  .pipeline.enter .flow-dot{ animation:flowMove 3s cubic-bezier(.4,0,.2,1) both; }
+  @keyframes flowMove{ 0%{ left:0%; opacity:0; } 8%{ opacity:1; } 92%{ opacity:1; } 100%{ left:100%; opacity:0; } }
+  @media (prefers-reduced-motion: reduce){ .pipeline.enter .flow-dot{ animation:none; } }
+
+  .demo-card{
+    margin-top:32px; background:var(--paper-bg); color:#1c1f19; border:1px solid #cfc9ae;
+    box-shadow:var(--shadow); padding:26px 32px; max-width:520px; transform:rotate(-.3deg);
+  }
+  .demo-card .stamp{
+    display:inline-flex; align-items:center; gap:8px; border:2px solid #1c1f19; color:#1c1f19;
+    font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:.66rem; letter-spacing:.1em; text-transform:uppercase;
+    padding:6px 12px; border-radius:50px; margin-bottom:16px;
+  }
+  .demo-card .url{ font-family:'IBM Plex Mono',monospace; font-size:1rem; font-weight:700; word-break:break-all; }
+  .demo-card .cred{ margin-top:12px; font-family:'IBM Plex Mono',monospace; font-size:.82rem; color:#3a3d33; }
+  .demo-card .cred b{ color:#1c1f19; }
+
+  .tier-grid{ margin-top:34px; display:grid; grid-template-columns:repeat(3,1fr); gap:1px; background:var(--line); border:1px solid var(--line); max-width:960px; }
+  .tier{ background:var(--surface); padding:22px 22px 24px; display:flex; flex-direction:column; }
+  .tier .name{ font-family:'IBM Plex Mono',monospace; font-size:.7rem; letter-spacing:.1em; text-transform:uppercase; color:var(--accent); }
+  .tier .price{ margin-top:10px; font-family:'Big Shoulders',sans-serif; font-weight:800; font-size:1.5rem; color:var(--flag-bright); }
+  .tier ul{ list-style:none; margin:14px 0 0; padding:0; display:flex; flex-direction:column; gap:8px; }
+  .tier li{ font-size:.82rem; color:var(--text-dim); padding-left:1.2em; position:relative; }
+  .tier li::before{ content:'—'; position:absolute; left:0; color:var(--text-dimmer); }
+
+  .land-grid{ margin-top:32px; display:grid; grid-template-columns:1fr 1fr 1fr; gap:1px; background:var(--line); border:1px solid var(--line); max-width:960px; }
+  .land{ background:var(--surface); padding:20px 22px; }
+  .land .k{ font-family:'IBM Plex Mono',monospace; font-size:.66rem; letter-spacing:.08em; text-transform:uppercase; color:var(--text-dimmer); margin-bottom:10px; }
+  .land h4{ font-family:'Public Sans',sans-serif; font-weight:700; font-size:.92rem; margin:0 0 8px; }
+  .land p{ margin:0; font-size:.78rem; color:var(--text-dim); line-height:1.5; }
+  .stat-row{ margin-top:26px; display:flex; gap:36px; flex-wrap:wrap; }
+  .stat{ font-family:'IBM Plex Mono',monospace; }
+  .stat .v{ font-size:1.6rem; font-weight:700; color:var(--text); font-family:'Big Shoulders',sans-serif; }
+  .stat .l{ font-size:.72rem; color:var(--text-dimmer); letter-spacing:.04em; }
+
+  .ask-split{ margin-top:32px; display:grid; grid-template-columns:1fr 1fr; border:1px solid var(--surface-border); max-width:920px; }
+  .ask-col{ padding:24px 26px; }
+  .ask-col:first-child{ border-right:1px solid var(--surface-border); background:var(--surface); }
+  .ask-col:last-child{ background:var(--surface-2); }
+  .ask-col h5{ font-family:'IBM Plex Mono',monospace; font-size:.68rem; letter-spacing:.1em; text-transform:uppercase; color:var(--text-dimmer); margin:0 0 14px; }
+  .ask-col ol, .ask-col ul{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:10px; counter-reset:item; }
+  .ask-col li{ font-size:.88rem; color:var(--text-dim); padding-left:1.6em; position:relative; }
+  .ask-col:first-child li{ counter-increment:item; }
+  .ask-col:first-child li::before{ content:counter(item); position:absolute; left:0; color:var(--accent); font-family:'IBM Plex Mono',monospace; font-size:.8rem; }
+  .ask-col:last-child li::before{ content:'✓'; position:absolute; left:0; color:var(--accent); }
+  .milestone{
+    margin-top:26px; font-family:'IBM Plex Mono',monospace; font-size:1rem; color:var(--flag-bright);
+    border-left:2px solid var(--flag); padding-left:16px; max-width:70ch;
+  }
+
+  .close-grid{ margin-top:40px; display:flex; gap:40px; flex-wrap:wrap; }
+  .close-item{ font-family:'IBM Plex Mono',monospace; }
+  .close-item .k{ font-size:.68rem; letter-spacing:.1em; text-transform:uppercase; color:var(--text-dimmer); margin-bottom:6px; }
+  .close-item .v{ font-size:1.02rem; color:var(--text); font-weight:600; }
+  .close-note{ margin-top:40px; font-size:.92rem; color:var(--text-dim); max-width:60ch; }
+
+  /* cover texture -- the same dot-grid the live product and marketing
+     site use, translated into this deck's dark/paper palette, so the
+     opening slide reads as the same brand rather than a fresh identity */
+  .cover-dots{
+    position:absolute; inset:0; pointer-events:none;
+    background-image: radial-gradient(rgba(233,230,218,.14) 1px, transparent 1px);
+    background-size: 26px 26px;
+    -webkit-mask-image: linear-gradient(to bottom, black, transparent 78%);
+    mask-image: linear-gradient(to bottom, black, transparent 78%);
+  }
+  :root[data-theme="light"] .cover-dots, @media (prefers-color-scheme: light){ .cover-dots{ } }
+
+  @keyframes riseIn{ from{ opacity:0; transform:translateY(16px); } to{ opacity:1; transform:translateY(0); } }
+  .slide.enter .content > *{ animation:riseIn .6s cubic-bezier(.16,1,.3,1) both; }
+  .slide.enter .content > *:nth-child(1){ animation-delay:.02s; }
+  .slide.enter .content > *:nth-child(2){ animation-delay:.10s; }
+  .slide.enter .content > *:nth-child(3){ animation-delay:.18s; }
+  .slide.enter .content > *:nth-child(4){ animation-delay:.26s; }
+  .slide.enter .content > *:nth-child(5){ animation-delay:.34s; }
+  @media (prefers-reduced-motion: reduce){ .slide.enter .content > *{ animation:none; } }
+
+  .tier, .demo-card{ transition:transform .15s ease-out; transform-style:preserve-3d; }
+</style>
+
+<div class="viewport" id="viewport">
+  <div class="track" id="track">
+
+    <!-- 00 COVER -->
+    <section class="slide">
+      <div class="cover-dots" aria-hidden="true"></div>
+      <div class="num mono">00 / 09</div>
+      <div class="content">
+        <div class="eyebrow">Business case</div>
+        <h1 class="display">Know who touched the data.<br>Prove it in minutes, not days.</h1>
+        <p class="lede">A read-only audit-trail layer for MENA fintech and trading firms — for <b>compliance officers, CTOs, DPOs, and auditors</b> who currently can't answer "who accessed this, and why" without days of manual work.</p>
+      </div>
+    </section>
+
+    <!-- 01 THE PROBLEM -->
+    <section class="slide">
+      <div class="brandmark mono">TRACE<b>LINE</b></div>
+      <div class="num mono">01 / 09</div>
+      <div class="content">
+        <div class="eyebrow">01 — The problem</div>
+        <h1 class="display">An auditor asks one question nobody can answer cleanly.</h1>
+        <p class="lede">"Show me everyone who accessed customer PII last quarter, and confirm it was authorized." Today that means database logs, a stale spreadsheet, and a Slack thread — days of work, and an answer nobody fully trusts.</p>
+        <div class="chip-row">
+          <span class="chip"><b>Compliance officer</b> — signs an attestation they can't verify</span>
+          <span class="chip"><b>CTO</b> — engineers pulled off product work</span>
+          <span class="chip"><b>DPO</b> — no system built to answer residency questions</span>
+          <span class="chip"><b>Auditor</b> — stuck accepting manual, self-reported evidence</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 02 WHY NOW -->
+    <section class="slide">
+      <div class="brandmark mono">TRACE<b>LINE</b></div>
+      <div class="num mono">02 / 09</div>
+      <div class="content">
+        <div class="eyebrow">02 — Why now</div>
+        <h1 class="display">Three forces just made this urgent.</h1>
+        <div class="steps-log">
+          <div class="row"><span class="n">01</span><span class="t"><b>Regulatory tightening</b> across UAE/GCC financial regulators on data governance and access controls.</span></div>
+          <div class="row"><span class="n">02</span><span class="t"><b>More firms exist that need this</b> — DIFC and ADGM fintech/trading-firm licensing has grown well past "figure it out later" scale.</span></div>
+          <div class="row"><span class="n">03</span><span class="t"><b>Enterprise buyers now require it</b> — SOC 2 / ISO 27001 certification is becoming a condition of the deal itself, not just the audit.</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 03 COST OF INACTION -->
+    <section class="slide">
+      <div class="brandmark mono">TRACE<b>LINE</b></div>
+      <div class="num mono">03 / 09</div>
+      <div class="content">
+        <div class="eyebrow">03 — Cost of inaction</div>
+        <h1 class="display">Every quarter without this costs more than the fix.</h1>
+        <div class="cost-grid">
+          <div class="cost"><div class="k">Regulatory exposure</div><div class="v">Fines and penalties for inadequate access controls.</div><span class="tbd">amount TBD — needs real sourcing</span></div>
+          <div class="cost"><div class="k">Failed / delayed audits</div><div class="v">Re-audit fees, plus credibility damage with every partner waiting on the certification.</div></div>
+          <div class="cost"><div class="k">Burned engineering time</div><div class="v">Engineers, not compliance analysts, hand-writing SQL for every access review.</div></div>
+          <div class="cost"><div class="k">Stalled deals</div><div class="v">Enterprise/banking deals that pause or die when clean access evidence can't be produced in time.</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 04 THE SOLUTION -->
+    <section class="slide wide">
+      <div class="brandmark mono">TRACE<b>LINE</b></div>
+      <div class="num mono">04 / 09</div>
+      <div class="content">
+        <div class="eyebrow">04 — The solution</div>
+        <h1 class="display">One system of record for who touched what, and why.</h1>
+        <div class="pipeline">
+          <div class="flow-dot"></div>
+          <div class="pstep"><div class="pn">01</div><h4>Connect</h4><p>Read-only to Postgres</p></div>
+          <div class="pstep"><div class="pn">02</div><h4>Ingest</h4><p>Tail access logs</p></div>
+          <div class="pstep"><div class="pn">03</div><h4>Tag</h4><p>Mark sensitive tables</p></div>
+          <div class="pstep"><div class="pn">04</div><h4>Rule</h4><p>Set region rules</p></div>
+          <div class="pstep"><div class="pn">05</div><h4>Flag</h4><p>Violations, automatically</p></div>
+          <div class="pstep"><div class="pn">06</div><h4>Report</h4><p>Hash-stamped CSV</p></div>
+        </div>
+        <div class="demo-card">
+          <div class="stamp">Live, not a mockup</div>
+          <div class="url">traceline-pi.vercel.app</div>
+          <div class="cred">Postgres-only today; more connectors and finer-grained lineage are <b>roadmap</b>, not built.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 05 WHY ME -->
+    <section class="slide">
+      <div class="brandmark mono">TRACE<b>LINE</b></div>
+      <div class="num mono">05 / 09</div>
+      <div class="content">
+        <div class="eyebrow">05 — Why me</div>
+        <h1 class="display">Already built the smaller version of this, inside a real trading firm.</h1>
+        <p class="lede">As an AI Engineer on the Data Engineering team at <b>Deriv</b> (Dubai-based online trading), I built an internal tool mapping Bronze/Silver/Gold medallion-table usage across service accounts — giving governance real visibility and cutting ad-hoc audit time. Traceline generalizes that, for the market it was built in.</p>
+      </div>
+    </section>
+
+    <!-- 06 DEFENSIBILITY & MARKET -->
+    <section class="slide wide">
+      <div class="brandmark mono">TRACE<b>LINE</b></div>
+      <div class="num mono">06 / 09</div>
+      <div class="content">
+        <div class="eyebrow">06 — Defensibility &amp; market</div>
+        <h1 class="display">Global players ignore this region. Regional players solve a different problem.</h1>
+        <div class="land-grid">
+          <div class="land"><div class="k">Global enterprise</div><h4>Collibra, Informatica, IBM Knowledge Catalog</h4><p>Built for large orgs, US/EU-first budgets.</p></div>
+          <div class="land"><div class="k">Access-governance specialists</div><h4>BigID, Immuta, Satori, Varonis</h4><p>Closest analog — Varonis paid $25M for Cyral in Mar 2025. Still no MENA focus.</p></div>
+          <div class="land"><div class="k">MENA RegTech</div><h4>Amani AI, Azakaw, DX Compliance, Moltazim</h4><p>KYC/AML, transaction surveillance, rule tracking — not access lineage.</p></div>
+        </div>
+        <div class="stat-row">
+          <div class="stat"><div class="v">700+</div><div class="l">DIFC innovation licenses issued</div></div>
+          <div class="stat"><div class="v">34</div><div class="l">UAE RegTech startups tracked (6 funded)</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 07 BUSINESS MODEL -->
+    <section class="slide wide">
+      <div class="brandmark mono">TRACE<b>LINE</b></div>
+      <div class="num mono">07 / 09</div>
+      <div class="content">
+        <div class="eyebrow">07 — Business model</div>
+        <h1 class="display">Sold jointly to compliance and engineering. Priced in flat tiers.</h1>
+        <div class="tier-grid">
+          <div class="tier"><div class="name">Starter</div><div class="price">TBD</div><ul><li>1–2 data sources</li><li>Quarterly reporting</li></ul></div>
+          <div class="tier"><div class="name">Growth</div><div class="price">TBD</div><ul><li>Multiple data sources</li><li>Frequent access reviews</li><li>Multiple seats</li></ul></div>
+          <div class="tier"><div class="name">Enterprise</div><div class="price">TBD</div><ul><li>Custom region rules</li><li>Dedicated support</li><li>Audit-grade SLAs</li></ul></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 08 PROOF + THE ASK -->
+    <section class="slide wide">
+      <div class="brandmark mono">TRACE<b>LINE</b></div>
+      <div class="num mono">08 / 09</div>
+      <div class="content">
+        <div class="eyebrow">08 — Proof so far &amp; the ask</div>
+        <h1 class="display">A working product exists. This is what closes the gap to paying customers.</h1>
+        <div class="ask-split">
+          <div class="ask-col">
+            <h5>The ask buys, in order</h5>
+            <ol>
+              <li>Design partners → paying customers, in a defined window</li>
+              <li>Engineering time past the Postgres-only MVP</li>
+              <li>Compliance/legal review of Traceline itself</li>
+              <li>First hire — sales or engineering</li>
+            </ol>
+          </div>
+          <div class="ask-col">
+            <h5>Proof, today</h5>
+            <ul>
+              <li>Live product — traceline-pi.vercel.app</li>
+              <li>Public code — github.com/chiragn28/traceline_project</li>
+              <li>Full ingestion → audit-report pipeline, working end to end</li>
+              <li>Design partners — none yet; the honest state</li>
+            </ul>
+          </div>
+        </div>
+        <div class="milestone">Success looks like: N paying design partners and $Y ARR within 6 months of close — raise amount, timeframe, and targets TBD.</div>
+      </div>
+    </section>
+
+    <!-- 09 CLOSE -->
+    <section class="slide">
+      <div class="num mono">09 / 09</div>
+      <div class="content">
+        <div class="eyebrow">Traceline</div>
+        <h1 class="display">Every paying customer is one fewer compliance officer stuck guessing.</h1>
+        <div class="close-grid">
+          <div class="close-item"><div class="k">Live demo</div><div class="v">traceline-pi.vercel.app</div></div>
+          <div class="close-item"><div class="k">Code</div><div class="v">github.com/chiragn28/traceline_project</div></div>
+          <div class="close-item"><div class="k">Founder</div><div class="v">Chirag Nayak</div></div>
+        </div>
+        <p class="close-note">Full business case, sourcing, and open research questions: docs/business-case.md in the repo above.</p>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<div class="dots" id="dots"></div>
+<div class="navbar">
+  <button class="navbtn" id="prevBtn" aria-label="Previous slide">←</button>
+  <div class="counter mono" id="counter">00 / 09</div>
+  <button class="navbtn" id="nextBtn" aria-label="Next slide">→</button>
+</div>
+<div class="hint mono">← → or space to navigate</div>
+
+<script>
+(function(){
+  var track = document.getElementById('track');
+  var slides = document.querySelectorAll('.slide');
+  var total = slides.length;
+  var index = 0;
+  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  var dotsWrap = document.getElementById('dots');
+  var dots = [];
+  slides.forEach(function(_, i){
+    var d = document.createElement('div');
+    d.className = 'dot';
+    d.addEventListener('click', function(){ go(i); });
+    dotsWrap.appendChild(d);
+    dots.push(d);
+  });
+
+  var counter = document.getElementById('counter');
+  var prevBtn = document.getElementById('prevBtn');
+  var nextBtn = document.getElementById('nextBtn');
+
+  var hasEntered = false;
+  function playEnter(){
+    slides.forEach(function(s){ s.classList.remove('enter'); });
+    var current = slides[index];
+    void current.offsetWidth;
+    current.classList.add('enter');
+  }
+
+  function render(){
+    track.style.transform = 'translateX(-' + (index * 100) + 'vw)';
+    counter.textContent = String(index).padStart(2, '0') + ' / ' + String(total - 1).padStart(2, '0');
+    prevBtn.disabled = index === 0;
+    nextBtn.disabled = index === total - 1;
+    dots.forEach(function(d, i){ d.classList.toggle('active', i === index); });
+
+    if (!hasEntered || reduceMotion) {
+      hasEntered = true;
+      playEnter();
+    } else {
+      setTimeout(playEnter, 560);
+    }
+  }
+
+  function go(i){
+    index = Math.max(0, Math.min(total - 1, i));
+    render();
+  }
+
+  prevBtn.addEventListener('click', function(){ go(index - 1); });
+  nextBtn.addEventListener('click', function(){ go(index + 1); });
+
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'ArrowRight' || e.key === ' ') { go(index + 1); e.preventDefault(); }
+    if (e.key === 'ArrowLeft') { go(index - 1); e.preventDefault(); }
+  });
+
+  var viewport = document.getElementById('viewport');
+  viewport.addEventListener('click', function(e){
+    if (e.target.closest('.navbtn') || e.target.closest('.dot')) return;
+    go(index + 1);
+  });
+
+  if (!reduceMotion) {
+    var tiltables = document.querySelectorAll('.tier, .demo-card');
+    tiltables.forEach(function(el){
+      el.addEventListener('mousemove', function(e){
+        var r = el.getBoundingClientRect();
+        var px = (e.clientX - r.left) / r.width;
+        var py = (e.clientY - r.top) / r.height;
+        var rx = (0.5 - py) * 8;
+        var ry = (px - 0.5) * 8;
+        el.style.transform = 'perspective(700px) rotateX(' + rx.toFixed(2) + 'deg) rotateY(' + ry.toFixed(2) + 'deg)';
+      });
+      el.addEventListener('mouseleave', function(){ el.style.transform = ''; });
+    });
+  }
+
+  render();
+})();
+</script>
