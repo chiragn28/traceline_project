@@ -1,7 +1,5 @@
 import MarketingNav from "@/components/marketing/MarketingNav";
-import Hero from "@/components/marketing/Hero";
-import Problem from "@/components/marketing/Problem";
-import HowItWorks from "@/components/marketing/HowItWorks";
+import StoryScroll from "@/components/marketing/story/StoryScroll";
 import Audience from "@/components/marketing/Audience";
 import Features from "@/components/marketing/Features";
 import TerminalPanel from "@/components/marketing/TerminalPanel";
@@ -41,9 +39,7 @@ export default function RootPage() {
       />
       <MarketingNav />
       <main>
-        <Hero />
-        <Problem />
-        <HowItWorks />
+        <StoryScroll />
         <Audience />
         <Features />
         <TerminalPanel />
