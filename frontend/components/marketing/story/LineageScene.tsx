@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Html } from "@react-three/drei";
 import * as THREE from "three";
+import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import type { MotionValue } from "motion/react";
 import { EDGES, NODES, NODE_INDEX, type GraphNode } from "./graph";
 
@@ -22,7 +23,7 @@ interface Props {
 // WebGL object dropped onto the page.
 const PALETTE = {
   light: {
-    table: "#0f172a", pipeline: "#334155", human: "#475569", service: "#64748b", unknown: "#94a3b8",
+    table: "#1e293b", pipeline: "#3b4a5e", human: "#526279", service: "#64748b", unknown: "#94a3b8",
     edge: "#94a3b8", gray: "#a8b0bc", bg: "#eaeef4", accent: "#059669", violation: "#dc2626",
     region: "#10b981", sheet: "#ffffff", rows: "#cbd5e1",
     pii: "#dc2626", financial: "#d97706", public: "#64748b",
@@ -107,12 +108,30 @@ function kindColor(n: GraphNode, pal: Palette) {
   return pal.service;
 }
 
-function NodeShape({ node }: { node: GraphNode }) {
-  if (node.kind === "table") return <boxGeometry args={[0.72, 0.48, 0.48]} />;
-  if (node.kind === "pipeline") return <octahedronGeometry args={[0.44, 0]} />;
-  if (node.actorType === "human") return <sphereGeometry args={[0.34, 24, 24]} />;
-  if (node.actorType === "unknown") return <sphereGeometry args={[0.34, 12, 12]} />;
-  return <icosahedronGeometry args={[0.37, 0]} />;
+// One smooth geometry per node kind, shared by every node of that kind.
+// Shapes stay distinguishable at a glance (box = table, ring = pipeline,
+// sphere = person, hex puck = service account) without low-poly faceting
+// on the curved ones; the hexagon is the one deliberately flat-sided shape.
+function buildGeometries() {
+  const service = new THREE.CylinderGeometry(0.37, 0.37, 0.22, 6, 1);
+  service.rotateX(Math.PI / 2);
+  service.rotateZ(Math.PI / 6);
+  return {
+    table: new RoundedBoxGeometry(0.74, 0.5, 0.5, 6, 0.09),
+    pipeline: new THREE.TorusGeometry(0.33, 0.14, 32, 96),
+    human: new THREE.SphereGeometry(0.34, 64, 48),
+    service,
+    unknown: new THREE.SphereGeometry(0.34, 64, 48),
+  };
+}
+type Geometries = ReturnType<typeof buildGeometries>;
+
+function geometryFor(n: GraphNode, g: Geometries) {
+  if (n.kind === "table") return g.table;
+  if (n.kind === "pipeline") return g.pipeline;
+  if (n.actorType === "human") return g.human;
+  if (n.actorType === "unknown") return g.unknown;
+  return g.service;
 }
 
 function Graph({ progress, theme, drag }: { progress: MotionValue<number>; theme: Theme; drag: React.MutableRefObject<DragState> }) {
@@ -134,6 +153,9 @@ function Graph({ progress, theme, drag }: { progress: MotionValue<number>; theme
   const sheetMat = useRef<THREE.MeshBasicMaterial>(null);
   const rowsMat = useRef<THREE.LineBasicMaterial>(null);
   const stampEl = useRef<HTMLDivElement>(null);
+
+  const geoms = useMemo(buildGeometries, []);
+  useEffect(() => () => Object.values(geoms).forEach((g) => g.dispose()), [geoms]);
 
   const cur = useMemo(() => NODES.map(() => new THREE.Vector3()), []);
   // Deterministic per-node jitter directions for the "chaos" beat.
@@ -330,9 +352,10 @@ function Graph({ progress, theme, drag }: { progress: MotionValue<number>; theme
 
   return (
     <>
-      <ambientLight intensity={isDark ? 0.55 : 0.95} />
-      <directionalLight position={[4, 6, 5]} intensity={isDark ? 1.3 : 1.05} />
-      <directionalLight position={[-5, -2, -4]} intensity={0.35} />
+      <ambientLight intensity={isDark ? 0.35 : 0.6} />
+      <hemisphereLight args={isDark ? ["#52525b", "#09090b", 0.6] : ["#ffffff", "#b6c0cf", 0.7]} />
+      <directionalLight position={[4, 6, 5]} intensity={isDark ? 1.4 : 1.15} />
+      <directionalLight position={[-5, -2, -4]} intensity={0.4} />
 
       <group ref={group} position-x={GRAPH_X}>
         <lineSegments geometry={edgeGeom}>
@@ -340,28 +363,28 @@ function Graph({ progress, theme, drag }: { progress: MotionValue<number>; theme
         </lineSegments>
 
         <instancedMesh ref={particles} args={[undefined, undefined, PARTICLE_COUNT]}>
-          <sphereGeometry args={[1, 8, 8]} />
+          <sphereGeometry args={[1, 20, 16]} />
           <meshBasicMaterial ref={particleMat} color={PALETTE[theme].accent} toneMapped={false} />
         </instancedMesh>
 
         {NODES.map((n, i) => (
           <group key={n.id} ref={(el) => { nodeRefs.current[i] = el; }}>
             <mesh
+              geometry={geometryFor(n, geoms)}
               onPointerOver={(e) => { e.stopPropagation(); setHovered(n.id); }}
               onPointerOut={() => setHovered((h) => (h === n.id ? null : h))}
             >
-              <NodeShape node={n} />
               <meshStandardMaterial
                 ref={(el) => { nodeMats.current[i] = el; }}
                 color={PALETTE[theme][n.kind === "table" ? "table" : n.kind === "pipeline" ? "pipeline" : n.actorType === "human" ? "human" : n.actorType === "unknown" ? "unknown" : "service"]}
-                roughness={0.45}
-                metalness={0.1}
+                roughness={0.38}
+                metalness={0.18}
               />
             </mesh>
 
             {n.tag && (
               <mesh rotation-x={Math.PI / 2}>
-                <torusGeometry args={[0.64, 0.04, 8, 48]} />
+                <torusGeometry args={[0.66, 0.04, 16, 96]} />
                 <meshBasicMaterial
                   ref={(el) => { ringMats.current[i] = el; }}
                   color={PALETTE[theme][n.tag]}
@@ -399,7 +422,7 @@ function Graph({ progress, theme, drag }: { progress: MotionValue<number>; theme
         {/* approved-region shell: an ellipsoid around everything except the violator */}
         <group scale={[1.55, 0.72, 0.72]}>
           <mesh>
-            <sphereGeometry args={[3, 32, 24]} />
+            <sphereGeometry args={[3, 64, 40]} />
             <meshBasicMaterial ref={regionFill} color={PALETTE[theme].region} transparent opacity={0} depthWrite={false} side={THREE.DoubleSide} />
           </mesh>
           <mesh>
