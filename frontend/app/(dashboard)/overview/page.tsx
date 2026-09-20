@@ -195,7 +195,9 @@ export default function OverviewPage() {
   }, []);
 
   const verified = snap ? snap.sources.filter((s) => s.read_only_verified === true).length : 0;
-  const sensitive = snap ? snap.tables.filter((t) => t.current_tags.length > 0).length : 0;
+  // Same definition the backend uses for review candidates: a table is
+  // sensitive if it carries any tag other than 'public'.
+  const sensitive = snap ? snap.tables.filter((t) => t.current_tags.some((tag) => tag.tag !== "public")).length : 0;
   const pending = snap ? snap.cycles.reduce((n, c) => n + c.pending_count, 0) : 0;
   const latestViolation = snap ? [...snap.violations].sort((a, b) => b.detected_at.localeCompare(a.detected_at))[0] : undefined;
   const attention = snap ? buildAttention(snap) : [];

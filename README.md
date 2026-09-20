@@ -10,10 +10,13 @@ The part of SOC 2 Type II and ISO 27001 that Vanta, Drata, and Secureframe
 still leave as a manual spreadsheet exercise for any company with a
 self-hosted or non-standard database.
 
+**[Live demo → traceline-pi.vercel.app](https://traceline-pi.vercel.app)**
+Sign in with `admin@demo-fintech.ae` / `demo-password-change-me`
+
 </div>
 
 <p align="center">
-  <img src="docs/screenshots/landing-hero-light.png" width="90%" alt="Traceline landing page">
+  <img src="docs/screenshots/landing-hero-light.png" width="90%" alt="Traceline landing page: a 3D access graph beside the headline">
 </p>
 
 ---
@@ -43,6 +46,33 @@ DIFC, ADGM, VARA) for teams that need that specifically — see
 <p align="center">
   <img src="docs/screenshots/landing-hero-dark.png" width="90%" alt="Traceline landing page in dark mode">
 </p>
+
+---
+
+## The landing page tells the story in 3D
+
+The top of the marketing page is one pinned WebGL scene — the product's
+own access graph (pipelines → tables ← actors) — that stays on screen
+while five short beats scroll past and drive it. Scrolling *is* the play
+button: the graph goes from alive, to the tangled
+nobody-knows-who-touched-what state, to tables picking up their tag
+rings, to an out-of-region client lighting a red edge into `customers`
+from outside the approved-region shell, to the whole thing collapsing
+into a hash-stamped report grid. Drag orbits it; hovering a node shows
+the same detail line the real Lineage page does, and the node names match
+the seed data, so the demo continues the story after you sign in.
+
+<p align="center">
+  <img src="docs/screenshots/landing-story-tag.png" width="32%" alt="Beat 3: tables pick up pii / financial / public tag rings">
+  <img src="docs/screenshots/landing-story-violation.png" width="32%" alt="Beat 4: an out-of-region client lights a red edge outside the approved-region shell">
+  <img src="docs/screenshots/landing-story-report.png" width="32%" alt="Beat 5: the graph collapses into a hash-stamped report grid">
+</p>
+
+It's three.js via React Three Fiber, loaded with `next/dynamic` so it
+never touches the server render. Phones, `prefers-reduced-motion`, and
+browsers without WebGL get a stacked layout with a 2D graph instead —
+the page never *depends* on the scene rendering. See
+`frontend/components/marketing/story/`.
 
 ---
 
@@ -115,11 +145,34 @@ after the fact and still pass as the original.
 
 ## The product, page by page
 
+Every page shares one set of primitives (`frontend/components/ui/`): a
+page header, semantic pills, relative timestamps with the exact time on
+hover, skeleton rows while loading, and empty states that say what to do
+next. Tag colours are the same everywhere — `pii` red, `financial` amber,
+`public` slate — in tables, the lineage graph, and the landing-page scene.
+
+### Overview
+Where you land after signing in. Four stat tiles (data sources, sensitive
+tables, open violations, pending review decisions — coloured only when
+something needs action), a *Needs attention* list that links straight to
+the page that fixes each item, a recent-access feed, and the latest
+report with its hash. It's composed entirely from endpoints the other
+pages already call; there's no separate "dashboard" backend.
+
+<p align="center">
+  <img src="docs/screenshots/dashboard-overview.png" width="85%" alt="Overview page">
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/dashboard-overview-dark.png" width="85%" alt="Overview page in dark mode">
+</p>
+
 ### Data Sources
 Connect a Postgres instance with a read-only credential. Traceline
-validates the role actually has no write grants and flags it if it does,
-and shows whether its own logging-coverage check is passing — so you know
-what you can and can't see, rather than assuming full coverage.
+validates the role actually has no write grants and flags it if it does
+(the status pill reads *read-only verified*, *unverified* or *not
+read-only*), and shows when it was last checked — so you know what you
+can and can't see, rather than assuming full coverage.
 
 <p align="center">
   <img src="docs/screenshots/dashboard-data-sources.png" width="85%" alt="Data Sources page">
@@ -139,10 +192,12 @@ onto the node itself.
 </p>
 
 ### Access Logs
-A searchable, filterable feed of every access event: actor, actor type
-(human vs. service account), query type, table, source region, and how
-confident Traceline is in that region — best-effort labeled, never claimed
-as a guarantee.
+A feed of every access event: actor, actor type (human vs. service
+account), query type, table, source IP, source region, and how confident
+Traceline is in that region — best-effort labeled, never claimed as a
+guarantee. Filters apply as you type rather than behind an Apply button,
+and an open logging-coverage gap shows as a banner instead of being
+silently ignored.
 
 <p align="center">
   <img src="docs/screenshots/dashboard-access-logs.png" width="85%" alt="Access Logs page">
@@ -150,8 +205,10 @@ as a guarantee.
 
 ### Violations
 Region rules (e.g. "PII must stay in `uae`") evaluated against real
-access events. Non-production sources can be excluded so staging traffic
-doesn't drown out signal.
+access events. Each flagged access is broken out into its classification,
+the region it was observed from (with confidence), and the regions that
+were approved — not a sentence to parse. Non-production sources can be
+excluded so staging traffic doesn't drown out signal.
 
 <p align="center">
   <img src="docs/screenshots/dashboard-violations.png" width="85%" alt="Violations page">
@@ -164,7 +221,9 @@ lookback window, a live database GRANT found at generation time, or both,
 labeled accordingly so a dormant-but-still-granted permission can't hide
 behind "nobody's queried it lately" — and approve or revoke each one.
 Decisions are permanent once made — a wrong call is corrected by the
-*next* cycle, never by editing history.
+*next* cycle, never by editing history. A progress bar shows how much of
+the cycle is decided, and a pending item that's been sitting too long
+gets an amber stripe.
 
 <p align="center">
   <img src="docs/screenshots/dashboard-access-reviews.png" width="85%" alt="Access Reviews page">
@@ -184,6 +243,22 @@ Manage who's an authorized reviewer (a separate flag from admin — a
 manager can review without being a Traceline admin) and attribute service
 accounts to a real person, so a pipeline credential never shows up as
 unowned "system" noise in a review.
+
+<p align="center">
+  <img src="docs/screenshots/dashboard-team.png" width="85%" alt="Team page">
+</p>
+
+### On a phone
+The nav collapses to a menu, headers and tiles stack, and wide tables
+scroll sideways inside their own card instead of pushing the page around.
+No page scrolls horizontally at phone width. The landing page swaps the
+3D scene for its stacked 2D layout.
+
+<p align="center">
+  <img src="docs/screenshots/mobile-landing.png" width="28%" alt="Landing page on a phone">
+  <img src="docs/screenshots/mobile-overview.png" width="28%" alt="Overview on a phone">
+  <img src="docs/screenshots/mobile-access-reviews.png" width="28%" alt="Access Reviews on a phone">
+</p>
 
 ---
 
@@ -213,6 +288,7 @@ the same `access_event` stream.
 | Worker | APScheduler, in-process | one fewer moving part than Celery/Redis for this workload |
 | Auth | Self-hosted JWT (httpOnly cookie) | no external account dependency for an MVP |
 | Frontend | Next.js 14 (App Router) + Tailwind + Motion | real interactivity, not a static marketing shell |
+| Landing scene | three.js via React Three Fiber 8 + drei 9 | the React 18 line; lazy-loaded, never server-rendered, 2D fallback |
 | Tenancy | App-level filtering + Postgres RLS | defense in depth, not either/or |
 
 ---
@@ -308,11 +384,21 @@ formality: frontend on Vercel, everything stateful on Railway.
 
 ```mermaid
 flowchart LR
-    Browser --> V["Vercel<br/>Next.js frontend"]
-    V -- "HTTPS, credentials: include" --> R["Railway<br/>FastAPI backend"]
+    Browser -- "same-origin /api/*" --> V["Vercel<br/>Next.js frontend"]
+    V -- "rewrite (next.config.js)" --> R["Railway<br/>FastAPI backend"]
     R --> PG[("Railway Postgres<br/>metadata, RLS-isolated")]
     W["Railway worker service<br/>(same image, different start command)"] --> PG
 ```
+
+**The browser never talks to Railway directly.** Every API call goes to
+the frontend's own origin at `/api/*`, and `frontend/next.config.js`
+rewrites it to the backend. That's not tidiness: the frontend
+(`vercel.app`) and backend (`railway.app`) are different sites, so a
+session cookie set by the backend is a *third-party* cookie, which iOS
+Safari drops by default — login returned 200 and then bounced straight
+back to the sign-in page on phones, while desktop kept working. Routed
+through the proxy, the cookie is first-party in every browser. Report
+downloads use the same `/api/...` path for the same reason.
 
 ### 1. Backend + worker + metadata Postgres, on Railway
 
@@ -334,12 +420,18 @@ flowchart LR
      network.
    - `JWT_SECRET` -- generate one: `python -c "import secrets; print(secrets.token_urlsafe(48))"`
    - `CREDENTIALS_ENCRYPTION_KEY` -- generate one: `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`
+   - `TRACELINE_ENV=production` -- the app refuses to boot outside
+     `local` if `JWT_SECRET` or `CREDENTIALS_ENCRYPTION_KEY` are still the
+     development defaults, so a forgotten secret fails loudly at startup
+     rather than silently shipping.
    - `CORS_ALLOWED_ORIGINS` = your Vercel URL (set after step 2 below;
-     redeploy once you have it).
-   - `COOKIE_SECURE=true`, `COOKIE_SAMESITE=none` -- **required**, not
-     optional, because the frontend and backend are on different origins.
-     A `Lax` cookie is silently never sent cross-site no matter what the
-     frontend's `fetch` call says.
+     redeploy once you have it). Browser traffic now arrives through the
+     frontend's proxy, so this only matters for anything calling the API
+     cross-origin directly.
+   - `COOKIE_SECURE=true`, `COOKIE_SAMESITE=none` -- what the hosted demo
+     runs. With the `/api` proxy in place the cookie is first-party, so
+     `lax` is expected to work too, but that hasn't been exercised in the
+     hosted setup.
 3. Create a **second** service, same repo, same root directory
    (`backend`), same environment variables as step 2 -- but override its
    **Start Command** (Settings → Deploy) to `python -m app.worker.scheduler`.
@@ -370,7 +462,9 @@ code, just from seeded rather than tailed input. Run it locally via
    Vercel auto-detects Next.js from there, no config file needed.
 2. Set the environment variable `NEXT_PUBLIC_API_BASE_URL` to your
    Railway backend service's public URL (Settings → Networking →
-   Generate Domain on that service if it doesn't have one yet).
+   Generate Domain on that service if it doesn't have one yet). Despite
+   the name, the browser never sees it any more: it's read by
+   `next.config.js` as the target of the `/api/*` rewrite.
 3. Deploy. Then go back to the Railway backend service and set
    `CORS_ALLOWED_ORIGINS` to the Vercel URL you just got, and redeploy it
    -- the two need each other's URLs, so this is a one-time back-and-forth
@@ -401,11 +495,21 @@ traceline/
         reports.py              # CSV export + SHA-256 hashing
       worker/scheduler.py      # APScheduler polling loop
     scripts/seed_demo.py       # idempotent local/cloud demo data (real + synthetic)
-    tests/                     # tenancy isolation, idempotency, reports, access review, rbac, region
+    tests/                     # tenancy isolation, idempotency, reports, access review, rbac, region, security hardening
   frontend/
-    app/                       # marketing site (/) + login + (dashboard) route group
+    next.config.js             # /api/* -> backend rewrite (keeps the session cookie first-party)
+    app/                       # marketing site (/) + login + (dashboard) route group, incl. /overview
+    components/ui/             # PageHeader, Pill, Time, EmptyState, Skeleton, CopyButton
     components/marketing/      # landing page components (Motion + Phosphor icons)
+    components/marketing/story/ # the pinned 3D scroll story: scene, beats, graph data
+    components/LineageGraph.tsx # the in-product zoomable lineage graph
+    lib/api-client.ts           # always calls same-origin /api
+    lib/violations.ts           # parses the backend's violation reason back into fields
     lib/CurrentUserContext.tsx  # role/can_review, read by pages to gate UI (backend re-checks independently)
+  docs/
+    business-case.md           # investor business case, sourced, with an open-questions list
+    presentation/              # design-partner deck + business-case deck (self-contained HTML)
+    screenshots/               # everything embedded in this README
 ```
 
 ---
@@ -499,8 +603,46 @@ Three of them were closed, and one was upgraded from "manual only" to
   and `localStorage` mechanism the marketing site already used, just no
   longer scoped away from the product itself.
 
+## The September 2026 pass: hardening, mobile, and a new front end
+
+- **Security and robustness audit.** Report bytes now live in a Postgres
+  column (migration 0004) rather than the container's filesystem — every
+  download on the hosted demo was 500ing after a redeploy wiped `/tmp`
+  while the row survived; rows that predate the fix return `410 Gone`
+  instead. CSV exports neutralise formula injection (cells starting with
+  `= + - @`). Login does the same bcrypt work whether or not the user
+  exists, logout actually clears the cross-site cookie, a malformed JWT
+  is a 401 not a 500, duplicate emails are a 409, the last admin can't
+  demote themselves, region rules reject a blank tag or an empty region
+  list, and IP-region map entries validate their CIDR. The csvlog
+  connector caps each poll at 8 MB per source so one noisy database
+  can't OOM the worker for every workspace, and skips (rather than dies
+  on) a non-UTC timestamp. Covered by `tests/test_security_hardening.py`.
+- **Login works on phones.** See [Deploying it](#deploying-it-demo-purposes):
+  the same-origin `/api` proxy replaced a cross-site cookie that iOS
+  Safari silently dropped. Found by reproducing it in Playwright's WebKit
+  with an iPhone profile, not by guessing.
+- **Mobile layout.** Header rows and cards used fixed side-by-side flex
+  with no `min-w-0`, so an unbreakable connection string pushed the
+  Re-check button off-screen. Fixed across the dashboard, plus a
+  collapsing nav menu.
+- **A landing page that shows the product** instead of describing it —
+  the pinned 3D scroll story above, replacing three flat sections.
+- **A dashboard that reads at a glance** — the Overview page, shared UI
+  primitives, pills instead of prose, skeleton and empty states, and
+  live-applying filters. One real bug fell out of it: the shared
+  `.input`/`.card`/`.btn` classes were emitted *after* Tailwind's
+  utilities, so a per-element `w-auto` or `pl-9` silently lost the
+  cascade. They now live in `@layer components`.
+- **The demo is self-serve.** The seeded credentials are shown under
+  every sign-in button and the login page fills them in with one click.
+
 ## Known limitations
 
+- **The demo admin login is public by design**, so anyone can change the
+  demo workspace (tag a table, decide a review item, add a user).
+  Re-running the seed script resets nothing once real data exists; a
+  read-only demo role is the right fix if that becomes a problem.
 - Table-name extraction remains best-effort (`sqlparse`, not a full SQL
   parser) -- by design, not an oversight. A statement whose table
   reference doesn't match the recognized patterns yields no table, not a
