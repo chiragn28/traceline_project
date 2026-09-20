@@ -5,10 +5,11 @@ import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api-client";
+import { DEMO_EMAIL, DEMO_PASSWORD } from "@/lib/demo";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("admin@demo-fintech.ae");
+  const [email, setEmail] = useState(DEMO_EMAIL);
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -104,6 +105,25 @@ export default function LoginPage() {
             {loading ? "Signing in..." : "Sign in"}
           </button>
         </form>
+
+        <div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-white/60 p-4 text-sm dark:border-zinc-700 dark:bg-zinc-900/60">
+          <p className="font-medium text-slate-700 dark:text-zinc-200">Just looking? Use the demo workspace.</p>
+          <p className="mt-1 break-all font-mono text-[12.5px] leading-relaxed text-slate-500 dark:text-zinc-400">
+            {DEMO_EMAIL}
+            <br />
+            {DEMO_PASSWORD}
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setEmail(DEMO_EMAIL);
+              setPassword(DEMO_PASSWORD);
+            }}
+            className="mt-3 text-sm font-medium text-emerald-700 transition-colors hover:text-emerald-600 dark:text-emerald-400 dark:hover:text-emerald-300"
+          >
+            Fill in demo credentials →
+          </button>
+        </div>
       </div>
     </div>
   );

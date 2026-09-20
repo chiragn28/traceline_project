@@ -9,6 +9,7 @@ import type { Theme } from "./LineageScene";
 import AccessGraph from "../AccessGraph";
 import MagneticButton from "../MagneticButton";
 import ScrollReveal from "../ScrollReveal";
+import DemoCredentials from "../DemoCredentials";
 
 // WebGL only exists in the browser; the scene must never be part of the
 // server render.
@@ -141,8 +142,9 @@ function BeatCopy({ beat, index, total, progress }: { beat: Beat; index: number;
           <h2 className={titleClass}>{beat.title}</h2>
           <p className={bodyClass}>{beat.body}</p>
           {beat.cta && (
-            <div className="mt-8">
+            <div className="mt-8 flex flex-col items-start">
               <MagneticButton href={beat.cta.href}>{beat.cta.label}</MagneticButton>
+              <DemoCredentials />
             </div>
           )}
         </motion.div>
@@ -171,8 +173,9 @@ function Stacked() {
             </h1>
             <p className="mt-5 max-w-[46ch] text-lg leading-relaxed text-slate-600 dark:text-zinc-400">{hero.body}</p>
             {hero.cta && (
-              <div className="mt-9">
+              <div className="mt-9 flex flex-col items-start">
                 <MagneticButton href={hero.cta.href}>{hero.cta.label}</MagneticButton>
+                <DemoCredentials />
               </div>
             )}
           </div>
@@ -193,8 +196,9 @@ function Stacked() {
               <p className={bodyClass}>{beat.body}</p>
               {beat.visual && <div className="mt-8 max-w-xl">{beat.visual}</div>}
               {beat.cta && (
-                <div className="mt-8">
+                <div className="mt-8 flex flex-col items-start">
                   <MagneticButton href={beat.cta.href}>{beat.cta.label}</MagneticButton>
+                  <DemoCredentials />
                 </div>
               )}
             </ScrollReveal>
