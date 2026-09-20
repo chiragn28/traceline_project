@@ -12,26 +12,50 @@ body {
   color: #f4f4f5;
 }
 
-.badge {
-  @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
-}
+/* Shared component classes live in the components layer so that a plain
+   utility on the element (w-auto, pl-9, py-1.5 ...) still wins the cascade
+   over what they @apply. Outside the layer they'd be emitted after
+   Tailwind's utilities and silently override them. */
+@layer components {
+  .badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+  }
 
-/* Tinted, layered shadow (not flat shadow-sm) so white cards actually lift
-   off the now slightly-deeper page background instead of blending into it. */
-.card {
-  @apply rounded-xl border border-slate-200/80 bg-white p-5 shadow-[0_1px_0_rgba(255,255,255,0.8)_inset,0_20px_40px_-24px_rgba(15,23,42,0.28)] dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-[0_1px_0_rgba(255,255,255,0.03)_inset,0_20px_40px_-24px_rgba(0,0,0,0.75)];
-}
+  /* Tinted, layered shadow (not flat shadow-sm) so white cards actually lift
+     off the now slightly-deeper page background instead of blending into it. */
+  .card {
+    @apply rounded-xl border border-slate-200/80 bg-white p-5 shadow-[0_1px_0_rgba(255,255,255,0.8)_inset,0_20px_40px_-24px_rgba(15,23,42,0.28)] dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-[0_1px_0_rgba(255,255,255,0.03)_inset,0_20px_40px_-24px_rgba(0,0,0,0.75)];
+  }
 
-.btn-primary {
-  @apply rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300;
-}
+  /* A card whose only content is a table: no inner padding, so rows run
+     edge to edge and the header band sits flush against the card's border. */
+  .table-card {
+    @apply overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-[0_1px_0_rgba(255,255,255,0.8)_inset,0_20px_40px_-24px_rgba(15,23,42,0.28)] dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-[0_1px_0_rgba(255,255,255,0.03)_inset,0_20px_40px_-24px_rgba(0,0,0,0.75)];
+  }
+  .table-card .table-scroll {
+    @apply overflow-x-auto;
+  }
 
-.btn-secondary {
-  @apply rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800;
-}
+  .btn-primary {
+    @apply rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-700 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300;
+  }
 
-.input {
-  @apply w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-zinc-500;
+  .btn-secondary {
+    @apply rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800;
+  }
+
+  .btn-sm {
+    @apply px-3 py-1.5 text-[13px];
+  }
+
+  .input {
+    @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-900/10 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-zinc-500 dark:focus:ring-zinc-100/10;
+  }
+
+  /* Identifiers (actors, tables, IPs, hashes) read better set in mono. */
+  .mono-id {
+    @apply font-mono text-[12.5px] text-slate-800 dark:text-zinc-200;
+  }
 }
 
 table.data-table {
@@ -39,9 +63,31 @@ table.data-table {
 }
 
 table.data-table th {
-  @apply border-b border-slate-200 px-3 py-2 text-left font-semibold text-slate-500 uppercase text-xs tracking-wide dark:border-zinc-800 dark:text-zinc-400;
+  @apply border-b border-slate-200 bg-slate-50/80 px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:border-zinc-800 dark:bg-zinc-900/70 dark:text-zinc-400;
 }
 
 table.data-table td {
-  @apply border-b border-slate-100 px-3 py-2 align-top dark:border-zinc-800;
+  @apply border-b border-slate-100 px-4 py-3 align-middle text-slate-700 tabular-nums dark:border-zinc-800/80 dark:text-zinc-300;
+}
+
+table.data-table tbody tr:last-child td {
+  @apply border-b-0;
+}
+
+table.data-table tbody tr:hover td {
+  @apply bg-slate-50/70 dark:bg-zinc-800/40;
+}
+
+table.data-table th.num,
+table.data-table td.num {
+  @apply text-right;
+}
+
+/* Left severity stripe on a table row, drawn inside the first cell so it
+   survives the row hover background. */
+table.data-table tr.row-danger td:first-child {
+  box-shadow: inset 3px 0 0 theme("colors.red.500");
+}
+table.data-table tr.row-warning td:first-child {
+  box-shadow: inset 3px 0 0 theme("colors.amber.500");
 }

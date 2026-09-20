@@ -1,8 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { UsersThree } from "@phosphor-icons/react";
 import { api, ApiError, Role, User, Workspace } from "@/lib/api-client";
 import { canManage, useCurrentUser } from "@/lib/CurrentUserContext";
+import { PageHeader, SectionHeader } from "@/components/ui/PageHeader";
+import { Pill } from "@/components/ui/Pill";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 interface OwnershipEntry {
   actor_identifier: string;
@@ -72,22 +76,24 @@ export default function TeamPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-xl font-semibold dark:text-zinc-100">Team &amp; Ownership</h1>
-        <p className="text-sm text-slate-500 dark:text-zinc-400">
-          Who can sign off on an access review, and who's accountable for each service account.
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="People"
+        title="Team & Ownership"
+        description="Who can sign off on an access review, and who's accountable for each service account."
+      />
 
       <section className="space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="font-medium text-slate-800 dark:text-zinc-200">Team members</h2>
-          {isAdmin && (
-            <button className="btn-secondary" onClick={() => setShowAddUser((v) => !v)}>
-              {showAddUser ? "Cancel" : "Add teammate"}
-            </button>
-          )}
-        </div>
+        <SectionHeader
+          title="Team members"
+          count={users.length}
+          actions={
+            isAdmin && (
+              <button className="btn-secondary btn-sm" onClick={() => setShowAddUser((v) => !v)}>
+                {showAddUser ? "Cancel" : "Add teammate"}
+              </button>
+            )
+          }
+        />
 
         {showAddUser && isAdmin && (
           <form onSubmit={addUser} className="card grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
@@ -142,60 +148,64 @@ export default function TeamPage() {
           </form>
         )}
 
-        <div className="card overflow-x-auto">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Email</th>
-                <th>Role</th>
-                <th>Authorized reviewer</th>
-                {isAdmin && <th></th>}
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((u) => (
-                <tr key={u.id}>
-                  <td>{u.email}</td>
-                  <td>
-                    {isAdmin ? (
-                      <select className="input" value={u.role} onChange={(e) => updateUser(u, { role: e.target.value as Role })}>
-                        {ROLES.map((r) => (
-                          <option key={r} value={r}>
-                            {r}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <span className="capitalize">{u.role}</span>
-                    )}
-                  </td>
-                  <td>
-                    {u.can_review ? (
-                      <span className="badge bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400">yes</span>
-                    ) : (
-                      <span className="badge bg-slate-100 text-slate-500 dark:bg-zinc-800 dark:text-zinc-400">no</span>
-                    )}
-                  </td>
-                  {isAdmin && (
-                    <td>
-                      <button className="btn-secondary" onClick={() => updateUser(u, { can_review: !u.can_review })}>
-                        {u.can_review ? "Revoke reviewer access" : "Grant reviewer access"}
-                      </button>
-                    </td>
-                  )}
+        <div className="table-card">
+          <div className="table-scroll">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Email</th>
+                  <th>Role</th>
+                  <th>Reviewer</th>
+                  {isAdmin && <th></th>}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {users.map((u) => (
+                  <tr key={u.id}>
+                    <td className="font-medium text-slate-900 dark:text-zinc-100">{u.email}</td>
+                    <td>
+                      {isAdmin ? (
+                        <select className="input w-auto py-1.5" value={u.role} onChange={(e) => updateUser(u, { role: e.target.value as Role })}>
+                          {ROLES.map((r) => (
+                            <option key={r} value={r}>
+                              {r}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <Pill tone={u.role === "admin" ? "accent" : "neutral"}>{u.role}</Pill>
+                      )}
+                    </td>
+                    <td>
+                      {u.can_review ? (
+                        <Pill tone="success" dot>
+                          authorized
+                        </Pill>
+                      ) : (
+                        <Pill tone="neutral">not a reviewer</Pill>
+                      )}
+                    </td>
+                    {isAdmin && (
+                      <td className="text-right">
+                        <button className="btn-secondary btn-sm" onClick={() => updateUser(u, { can_review: !u.can_review })}>
+                          {u.can_review ? "Revoke reviewer" : "Make reviewer"}
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </section>
 
       <section className="space-y-3">
-        <h2 className="font-medium text-slate-800 dark:text-zinc-200">Service account ownership</h2>
-        <p className="text-sm text-slate-500 dark:text-zinc-400">
-          Attribute a service account / pipeline credential to a real person so review items aren't unowned "system"
-          noise.
-        </p>
+        <SectionHeader
+          title="Service account ownership"
+          count={ownership.length}
+          description="Attribute a service account or pipeline credential to a real person, so review items aren't unowned “system” noise."
+        />
 
         {isAdmin && (
           <form onSubmit={addOwnership} className="card flex flex-wrap items-end gap-4">
@@ -228,35 +238,44 @@ export default function TeamPage() {
           </form>
         )}
 
-        <div className="card overflow-x-auto">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Actor identifier</th>
-                <th>Owner</th>
-              </tr>
-            </thead>
-            <tbody>
-              {ownership.map((o) => (
-                <tr key={o.actor_identifier}>
-                  <td>{o.actor_identifier}</td>
-                  <td>{users.find((u) => u.id === o.owner_user_id)?.email || o.owner_user_id}</td>
-                </tr>
-              ))}
-              {ownership.length === 0 && (
+        <div className="table-card">
+          <div className="table-scroll">
+            <table className="data-table">
+              <thead>
                 <tr>
-                  <td colSpan={2} className="text-slate-400 dark:text-zinc-500">
-                    No service accounts attributed yet.
-                  </td>
+                  <th>Actor identifier</th>
+                  <th>Owner</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {ownership.map((o) => (
+                  <tr key={o.actor_identifier}>
+                    <td>
+                      <span className="mono-id">{o.actor_identifier}</span>
+                    </td>
+                    <td>{users.find((u) => u.id === o.owner_user_id)?.email || o.owner_user_id}</td>
+                  </tr>
+                ))}
+                {ownership.length === 0 && (
+                  <tr>
+                    <td colSpan={2} className="p-0">
+                      <EmptyState
+                        icon={UsersThree}
+                        title="No service accounts attributed yet"
+                        hint="Unowned service accounts show up as “unattributed” in every review cycle until someone is named."
+                        compact
+                      />
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </section>
 
       <section className="space-y-3">
-        <h2 className="font-medium text-slate-800 dark:text-zinc-200">Workspace settings</h2>
+        <SectionHeader title="Workspace settings" />
         {workspace && (
           <div className="card flex flex-col items-start gap-4 sm:flex-row sm:justify-between sm:gap-6">
             <div>
@@ -267,15 +286,20 @@ export default function TeamPage() {
                 Never sent for private/internal addresses regardless of this setting.
               </p>
             </div>
-            {isAdmin ? (
-              <button className="btn-secondary shrink-0" onClick={toggleGeolocation}>
-                {workspace.enable_ip_geolocation ? "Disable" : "Enable"}
-              </button>
-            ) : (
-              <span className="badge shrink-0 bg-slate-100 text-slate-500 dark:bg-zinc-800 dark:text-zinc-400">
-                {workspace.enable_ip_geolocation ? "enabled" : "disabled"}
-              </span>
-            )}
+            <div className="flex shrink-0 items-center gap-3">
+              {workspace.enable_ip_geolocation ? (
+                <Pill tone="success" dot>
+                  enabled
+                </Pill>
+              ) : (
+                <Pill tone="neutral">off</Pill>
+              )}
+              {isAdmin && (
+                <button className="btn-secondary btn-sm" onClick={toggleGeolocation}>
+                  {workspace.enable_ip_geolocation ? "Disable" : "Enable"}
+                </button>
+              )}
+            </div>
           </div>
         )}
       </section>

@@ -10,6 +10,7 @@ import { useCurrentUser } from "@/lib/CurrentUserContext";
 import ThemeToggle from "@/components/marketing/ThemeToggle";
 
 const LINKS = [
+  { href: "/overview", label: "Overview" },
   { href: "/data-sources", label: "Data Sources" },
   { href: "/lineage", label: "Lineage" },
   { href: "/access-logs", label: "Access Logs" },
@@ -47,7 +48,7 @@ export default function Nav() {
     <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/75 shadow-[0_1px_3px_rgba(15,23,42,0.06)] backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/75 dark:shadow-none">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
         <div className="flex items-center gap-8">
-          <Link href="/data-sources" className="flex items-center">
+          <Link href="/overview" className="flex items-center">
             <Image
               src="/brand/logo-lockup-light.png"
               alt="Traceline"

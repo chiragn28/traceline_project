@@ -19,7 +19,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await api.post("/auth/login", { email, password });
-      router.push("/data-sources");
+      router.push("/overview");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong");
     } finally {

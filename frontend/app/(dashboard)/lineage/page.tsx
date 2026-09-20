@@ -1,9 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Table as TableIcon } from "@phosphor-icons/react";
 import LineageGraph from "@/components/LineageGraph";
 import { api, DataSource, LineageGraph as LineageGraphData, TableAsset } from "@/lib/api-client";
 import { canManage, useCurrentUser } from "@/lib/CurrentUserContext";
+import { PageHeader, SectionHeader } from "@/components/ui/PageHeader";
+import { TagPill } from "@/components/ui/Pill";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 const TAG_OPTIONS = ["pii", "financial", "public"];
 
@@ -42,28 +46,32 @@ export default function LineagePage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold dark:text-zinc-100">Lineage &amp; Classification</h1>
-        <p className="text-sm text-slate-500 dark:text-zinc-400">
-          Table-level only in this MVP. Tag tables so region rules and violation checks know what they're
-          protecting.
-        </p>
-      </div>
-
-      <select className="input max-w-sm" value={selectedSource} onChange={(e) => setSelectedSource(e.target.value)}>
-        {sources.map((s) => (
-          <option key={s.id} value={s.id}>
-            {s.name}
-          </option>
-        ))}
-      </select>
+      <PageHeader
+        eyebrow="Classification"
+        title="Lineage & Classification"
+        description="Which pipelines and people touch which tables. Tag the tables that matter so region rules and review cycles know what they're protecting — table-level only in this MVP."
+        actions={
+          sources.length > 1 && (
+            <select className="input w-auto min-w-[14rem]" value={selectedSource} onChange={(e) => setSelectedSource(e.target.value)}>
+              {sources.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          )
+        }
+      />
 
       <div className="card">
-        <h2 className="mb-3 font-medium text-slate-800 dark:text-zinc-200">How everything connects</h2>
-        {graph ? <LineageGraph graph={graph} /> : <p className="text-sm text-slate-400 dark:text-zinc-500">Loading...</p>}
+        <h2 className="mb-3 text-[15px] font-semibold text-slate-900 dark:text-zinc-100">How everything connects</h2>
+        {graph ? <LineageGraph graph={graph} /> : <p className="text-sm text-slate-400 dark:text-zinc-500">Loading…</p>}
       </div>
 
-      <div className="card overflow-x-auto">
+      <SectionHeader title="Tables" count={tables.length} description="Tag history is append-only: retagging adds a new entry rather than rewriting the old one." />
+
+      <div className="table-card">
+        <div className="table-scroll">
         <table className="data-table">
           <thead>
             <tr>
@@ -76,15 +84,15 @@ export default function LineagePage() {
           <tbody>
             {tables.map((t) => (
               <tr key={t.id}>
-                <td>{t.schema_name}</td>
-                <td className="font-medium">{t.table_name}</td>
+                <td className="text-slate-500 dark:text-zinc-400">{t.schema_name}</td>
+                <td>
+                  <span className="mono-id font-medium">{t.table_name}</span>
+                </td>
                 <td>
                   <div className="flex flex-wrap gap-1">
                     {t.current_tags.length === 0 && <span className="text-slate-400 dark:text-zinc-500">untagged</span>}
                     {t.current_tags.map((tag) => (
-                      <span key={tag.id} className={`badge ${tagColor(tag.tag)}`}>
-                        {tag.tag}
-                      </span>
+                      <TagPill key={tag.id} tag={tag.tag} />
                     ))}
                   </div>
                 </td>
@@ -138,27 +146,20 @@ export default function LineagePage() {
             ))}
             {tables.length === 0 && (
               <tr>
-                <td colSpan={4} className="text-slate-400 dark:text-zinc-500">
-                  No tables discovered yet for this source.
+                <td colSpan={4} className="p-0">
+                  <EmptyState
+                    icon={TableIcon}
+                    title="No tables discovered yet"
+                    hint="The worker discovers tables on its next poll of this source's schema."
+                    compact
+                  />
                 </td>
               </tr>
             )}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );
-}
-
-function tagColor(tag: string): string {
-  switch (tag) {
-    case "pii":
-      return "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400";
-    case "financial":
-      return "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400";
-    case "public":
-      return "bg-slate-100 text-slate-600 dark:bg-zinc-800 dark:text-zinc-300";
-    default:
-      return "bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-400";
-  }
 }
